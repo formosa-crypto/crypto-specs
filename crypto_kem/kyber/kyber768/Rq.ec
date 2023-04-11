@@ -1,35 +1,24 @@
-require import AllCore IntDiv FloorCeil StdOrder RealExp List.
-require import ZModP Ring.
-require import Distr DList DistrExtra DMap DInterval.
-from Jasmin require import JWord JUtils.
-require PKE_Ext.
-require import Array25 Array32 Array34 Array64 Array128 Array168 Array256 Array384.
-require import Array768 Array960 Array1024 Array1088 Array1184 Array1152.
-require  PRF.
-
-require import KyberLib.
-import BitEncoding BitChunking BS2Int.
-
-(*---*) import RField RealOrder IntOrder IntID.
-
-
-(*****************************************************)
-(* Representations of polynomials in Zq[X]/(X^256+1) *)
-(*****************************************************)
+require import AllCore.
+require import IntDiv.
+require import List.
+require import Ring.
+require import Array256.
 
 require import GFq.
 import Zq.
 
-theory KPoly.
+(*****************************************************)
+(* Representations of polynomials in Zq[X]/(X^256+1) *)
+(*****************************************************)
 
 type poly = Fq Array256.t.
 
 op zero : poly = Array256.create Zq.zero.
 op one : poly = zero.[0<-Zq.one].
 
-  (* Ring multiplication: schoolbook multiplication in this
-  ring is essentially generating a square matrix of coefficient
-  multiplications and summing over the columns. *)
+(* Ring multiplication: schoolbook multiplication in this
+ring is essentially generating a square matrix of coefficient
+multiplications and summing over the columns. *)
 op (&*) (pa pb : poly) : poly =
   Array256.init (fun (i : int) => foldr (fun (k : int) (ci : Fq) =>
   if (0 <= i - k) 
@@ -42,15 +31,12 @@ op (&+) (pa pb : poly) : poly =
 
 op (&-) (p : poly) : poly =  map Zq.([-]) p.
 
-  (* Compression/decompression of polys *)
+(* Compression/decompression of polys *)
 
 op compress_poly(d : int, p : poly) : int Array256.t =  map (compress d) p.
 
 op decompress_poly(d : int, p : int Array256.t) : poly =  map (decompress d) p.
 
-  (* The distribution of ring elements of small norm as an operator *)
-
-(*  abbrev dR (d: Fq distr): poly distr = darray256 d. *)
 
 (**************************************************)
 (**************************************************)
@@ -143,12 +129,15 @@ op basemul(a b : poly) :  poly = Array256.init (fun i =>
     to be that of the base ring of polynomials, which 
     I never work with. *)
 
+(* XXX: Is this really needed in the spec? *)
+
+(*
 require import PolyReduce.
 clone import PolyReduce as PolyR with
 op n <- 256,
 type BasePoly.coeff <- Fq,
 op BasePoly.Coeff.(+) <- Zq.(+),
-op BasePoly.Coeff.( *) <- Zq.( *),
+op BasePoly.Coeff.( *)(* <- Zq.( *)(*,
 op BasePoly.Coeff.zeror <- Zq.zero,
 op BasePoly.Coeff.oner <- Zq.one,
 op BasePoly.Coeff.([-]) <- Zq.([-]),
@@ -173,6 +162,6 @@ proof gt0_n by auto.
 op poly2polyr(p : poly) : AlgR = pi (oget (BasePoly.to_basepoly 
     (fun i => if 0<=i<256 then p.[i] else Zq.zero))).
 op polyr2poly(p : AlgR) : poly = Array256.init (fun i => p.[i]).
+    *)
 
-end KPoly.
 

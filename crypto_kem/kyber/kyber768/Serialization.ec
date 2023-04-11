@@ -14,12 +14,15 @@ import BitEncoding BitChunking BS2Int.
 
 require import GFq.
 import Zq.
+require import Rq.
 
-require import KPoly.
-import PolyR.
+require import VecMat.
+import KMatrix.
 
+(*
 import KMatrix.
 import Vector.
+  *)
 
 (****************************************************************************)
   (****************************************************************************)

@@ -3,12 +3,13 @@ require import IntDiv.
 require import ZModP Ring.
 
 (****************************************************)
-(*               The finite field Zq/Fq             *)
+(*               The finite field GF(q)             *)
 (****************************************************)
 
 op q : int = 3329 axiomatized by qE.
 axiom prime_q : prime q.
 
+(*XXX: understand and fix? *)
 clone import ZModField as Zq with 
   op p <- q 
   rename "zmod" as "Fq"
