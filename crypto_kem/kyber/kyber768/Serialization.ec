@@ -1,17 +1,10 @@
-  require import AllCore IntDiv FloorCeil StdOrder RealExp List.
-require import ZModP Ring.
-require import Distr DList DistrExtra DMap DInterval.
-from Jasmin require import JWord JUtils.
-require PKE_Ext.
-require import Array25 Array32 Array34 Array64 Array128 Array168 Array256 Array384.
-require import Array768 Array960 Array1024 Array1088 Array1184 Array1152.
-require  PRF.
+(* General EC imports *)
+require import AllCore IntDiv List.
+from Jasmin require import JWord.
+require import Array32 Array128 Array256 Array384 Array768 Array960 Array1152.
+import BitEncoding BS2Int.
 
-require import KyberLib.
-import BitEncoding BitChunking BS2Int.
-
-(*---*) import RField RealOrder IntOrder IntID.
-
+(* Imports of "lower-level" Kyber spec parts *)
 require import GFq.
 import Zq.
 require import Rq.
@@ -19,16 +12,11 @@ require import Rq.
 require import VecMat.
 import KMatrix.
 
-(*
-import KMatrix.
-import Vector.
-  *)
-
 (****************************************************************************)
-  (****************************************************************************)
-  (*  Encoding polys and vectors to and from byte arrays                      *)
-  (****************************************************************************)
-  (****************************************************************************)
+(****************************************************************************)
+(*  Encoding polys and vectors to and from byte arrays                      *)
+(****************************************************************************)
+(****************************************************************************)
 
 type ipoly = int Array256.t.
 op toipoly(p : poly) : ipoly = map asint p.

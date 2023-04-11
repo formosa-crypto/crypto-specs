@@ -41,11 +41,12 @@ module type XOF_t = {
 module XOF : XOF_t = {
   var state : W64.t Array25.t
   proc init(rho : W8.t Array32.t, i j : int) : unit = {
-      state <- SHAKE128_ABSORB_34 rho (W8.of_int i) (W8.of_int j);
+    state <- SHAKE128_ABSORB_34 rho (W8.of_int i) (W8.of_int j);
   }
-      proc next_bytes() : W8.t Array168.t = { 
-      var buf;
+
+  proc next_bytes() : W8.t Array168.t = { 
+    var buf;
     (state,buf) <- SHAKE128_SQUEEZE_168 state;
-      return buf; 
+    return buf; 
   }
 }.
