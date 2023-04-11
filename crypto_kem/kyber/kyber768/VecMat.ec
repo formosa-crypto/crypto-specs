@@ -8,7 +8,6 @@ op size <- kvec,
 type ZR.t = poly,
 op ZR.zeror <- Rq.zero,
 op ZR.oner <- Rq.one,
-(*pred ZR.unit = fun x => unit (poly2polyr x),*)
 op ZR.(+) <- Rq.(&+),
 op ZR.([-]) <- Rq.(&-),
 op ZR.( * ) <- Rq.(&*).
