@@ -13,6 +13,7 @@ import BitEncoding BitChunking BS2Int.
 
 (*---*) import RField RealOrder IntOrder IntID.
 
+require import Rq.
 require import Symmetric.
 require import Sampling.
 require import VecMat.

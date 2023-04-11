@@ -17,11 +17,12 @@ require import Symmetric.
 require import GFq.
 import Zq.
 
-require import KPoly.
-import PolyR.
-import KMatrix.
+require import Rq.
 
 require import Sampling.
+
+require import VecMat.
+import KMatrix.
 
 require import Serialization.
 
