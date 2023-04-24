@@ -11,7 +11,8 @@ import Zq.
 (* Representations of polynomials in Zq[X]/(X^256+1) *)
 (*****************************************************)
 
-type poly = Fq Array256.t.
+(* XXX: Exlain why we don't use the EC math theory PolyReduce in the spec *)
+type poly = coeff Array256.t.
 
 op zero : poly = Array256.create Zq.zero.
 op one : poly = zero.[0<-Zq.one].
@@ -20,14 +21,14 @@ op one : poly = zero.[0<-Zq.one].
 ring is essentially generating a square matrix of coefficient
 multiplications and summing over the columns. *)
 op (&*) (pa pb : poly) : poly =
-  Array256.init (fun (i : int) => foldr (fun (k : int) (ci : Fq) =>
+  Array256.init (fun (i : int) => foldr (fun (k : int) (ci : coeff) =>
   if (0 <= i - k) 
   then ci + pa.[k] * pb.[i - k] 
   else ci - pa.[k] * pb.[256 + (i - k)]) 
   Zq.zero (iota_ 0 256)).
 
 op (&+) (pa pb : poly) : poly = 
-  map2 (fun a b : Fq  => Zq.(+) a b) pa pb.
+  map2 (fun a b : coeff  => Zq.(+) a b) pa pb.
 
 op (&-) (p : poly) : poly =  map Zq.([-]) p.
 
@@ -55,7 +56,7 @@ decryption failure bound.
 
 require (****) Bigalg.
 clone import Bigalg.BigComRing as BigDom with
-type  CR.t     <- Fq,
+type  CR.t     <- coeff,
 op  CR.zeror <- Zq.zero,
 op  CR.oner  <- Zq.one,
 op  CR.(+)   <- Zq.(+),
@@ -80,7 +81,7 @@ realize CR.unitP     by apply ZqRing.unitP.
 realize CR.unitout   by apply ZqRing.unitout.
 
 
-op zroot = inFq 17.
+op zroot = incoeff 17.
 
 op br = BitEncoding.BitReverse.bsrev 7.
 
@@ -92,10 +93,10 @@ op ntt(p : poly) = Array256.init (fun i =>
 
 op invntt(p : poly) = Array256.init (fun i => 
   if i %% 2  = 0 
-  then let ii = i %/ 2 in BAdd.bigi predT (fun j => inv (inFq 128) * p.[2*j]   * ZqRing.exp zroot (-((2 * br j + 1) * ii))) 0 128
-  else let ii = i %/ 2 in BAdd.bigi predT (fun j => inv (inFq 128) * p.[2*j+1] * ZqRing.exp zroot (-((2 * br j + 1) * ii))) 0 128) axiomatized by invnttE.
+  then let ii = i %/ 2 in BAdd.bigi predT (fun j => inv (incoeff 128) * p.[2*j]   * ZqRing.exp zroot (-((2 * br j + 1) * ii))) 0 128
+  else let ii = i %/ 2 in BAdd.bigi predT (fun j => inv (incoeff 128) * p.[2*j+1] * ZqRing.exp zroot (-((2 * br j + 1) * ii))) 0 128) axiomatized by invnttE.
 
-  (* This is multiplication of two degree-1 polynomials in Fq
+  (* This is multiplication of two degree-1 polynomials in coeff
   modulo X^2 - zroot.
   
   (a1 + a2 X) * (b1 + b2 X) mod (X^2 - zroot) = 
@@ -106,7 +107,7 @@ op invntt(p : poly) = Array256.init (fun i =>
   And its extension to two products, one over   
   (X^2 - zroot) and another one over (X^2 + zroot)
   *)
-op cmplx_mul (a :Fq * Fq, b : Fq * Fq, zzeta : Fq) : Fq * Fq =
+op cmplx_mul (a :coeff * coeff, b : coeff * coeff, zzeta : coeff) : coeff * coeff =
 (a.`2 * b.`2 * zzeta + a.`1*b.`1, a.`1 * b.`2 + a.`2 * b.`1).
 
   (* The base multiplication in the NTT domain is defined in the
@@ -118,3 +119,14 @@ op basemul(a b : poly) :  poly = Array256.init (fun i =>
   (cmplx_mul (a.[2*ii],a.[2*ii+1]) (b.[2*ii],b.[2*ii+1]) (ZqRing.exp zroot ((2 * br ii + 1)))).`1
   else let ii = i %/ 2 in 
   (cmplx_mul (a.[2*ii],a.[2*ii+1]) (b.[2*ii],b.[2*ii+1]) (ZqRing.exp zroot ((2 * br ii + 1)))).`2).
+
+
+clone import Ring.ComRing as Rq with
+type t = poly,
+op zeror = zero,
+op oner = one,
+op (+) = (&+),
+op [-] = (&-),
+op ( * ) =(&*).
+
+

@@ -27,8 +27,8 @@ module Parse(XOF : XOF_t) = {
         k <- k + 3;
         d1 <- to_uint bi        + 256 * (to_uint bi1 %% 16);
         d2 <- to_uint bi1 %/ 16 + 16  *  to_uint bi2;
-        if (d1 < q)                { aa.[j] <- inFq d1; j <- j + 1; }
-        if ((d2 < q) && (j < 256)) { aa.[j] <- inFq d2; j <- j + 1; }
+        if (d1 < q)                { aa.[j] <- incoeff d1; j <- j + 1; }
+        if ((d2 < q) && (j < 256)) { aa.[j] <- incoeff d2; j <- j + 1; }
       }
     }
     return aa;
@@ -45,11 +45,11 @@ module CBD2 = {
     while (i < 128) {
       a <- b2i bytes.[i].[j %% 2 * 4 + 0] + b2i bytes.[i].[j %% 2 * 4 + 1];
       b <- b2i bytes.[i].[j %% 2 * 4 + 2] + b2i bytes.[i].[j %% 2 * 4 + 3];
-      rr.[j] <- inFq  (a - b);
+      rr.[j] <- incoeff  (a - b);
       j <- j + 1;
       a <- b2i bytes.[i].[j %% 2 * 4 + 0] + b2i bytes.[i].[j %% 2 * 4 + 1];
       b <- b2i bytes.[i].[j %% 2 * 4 + 2] + b2i bytes.[i].[j %% 2 * 4 + 3];
-      rr.[j] <- inFq  (a - b);
+      rr.[j] <- incoeff  (a - b);
       j <- j + 1;
       i <- i + 1;
     }

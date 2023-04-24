@@ -10,17 +10,12 @@ import Zq.
 require import Rq.
 
 require import VecMat.
-import KMatrix.
+import PolyMat.
 
-(****************************************************************************)
-(****************************************************************************)
-(*  Encoding polys and vectors to and from byte arrays                      *)
-(****************************************************************************)
-(****************************************************************************)
 
 type ipoly = int Array256.t.
 op toipoly(p : poly) : ipoly = map asint p.
-op ofipoly(p : ipoly)  : poly = map inFq p.
+op ofipoly(p : ipoly)  : poly = map incoeff p.
 
 type ipolyvec = int Array768.t.
 
@@ -44,41 +39,21 @@ op [a] fromarray384(a0 a1 a2 : 'a Array384.t) : 'a Array1152.t =
   then a1.[k-384] 
   else a2.[k-768]).   
 
-op toipolyvec(p : vector) : ipolyvec = map asint (fromarray256 p.[0] p.[1] p.[2]).
+op toipolyvec(p : polyvec) : ipolyvec = map asint (fromarray256 p.[0] p.[1] p.[2]).
 
-op ofipolyvec(p : ipolyvec) =  offunv (fun k => map inFq (subarray256 p k)).
+op ofipolyvec(p : ipolyvec) =  offunv (fun k => map incoeff (subarray256 p k)).
 
-op compress_polyvec(d : int, p : vector) : ipolyvec =  
+op compress_polyvec(d : int, p : polyvec) : ipolyvec =  
   map (compress d) (fromarray256 p.[0] p.[1] p.[2]).
 
 op decompress_polyvec(d : int, p : ipolyvec) =  
 offunv (fun k => map (decompress d) (subarray256 p k)).
 
 
+(* To avoid loop matching pain with the implementation
+we adopt the same control structure and specify EncDec
+in a more palatable way. *)
 
-require import BitEncoding.
-import BitChunking.
-
-op BytesToBits(bytes : W8.t list) : bool list = flatten (map W8.w2bits bytes).
-op decode(l : int, bits : bool list) = map bs2int (chunk l (take (256*l) bits)).
-op decode_vec(l : int, bits : bool list) = map bs2int (chunk l (take (768*l) bits)).
-
-
-  (* Decode Operators as Defined in the Kyber Spec *)
-op sem_decode12(a : W8.t Array384.t) : ipoly =
-  Array256.of_list 0 (decode 12 (BytesToBits (to_list a))).
-op sem_decode4(a : W8.t Array128.t) : ipoly = 
-  Array256.of_list 0 (decode 4 (BytesToBits (to_list a))).
-op sem_decode1(a : W8.t Array32.t) : ipoly = 
-  Array256.of_list 0 (decode 1 (BytesToBits (to_list a))).
-op sem_decode10_vec(a : W8.t Array960.t) : ipolyvec = 
-  Array768.of_list 0 (decode_vec 10 (BytesToBits (to_list a))).
-op sem_decode12_vec(a : W8.t Array1152.t) : ipolyvec = 
-  Array768.of_list 0 (decode_vec 12 (BytesToBits (to_list a))).
-
-  (* To avoid loop matching pain with the implementation
-  we adopt the same control structure and specify EncDec
-  in a more palattable way. *)
 module EncDec = {
 
   proc decode12(a : W8.t Array384.t) : ipoly = {
@@ -173,7 +148,7 @@ module EncDec = {
         return ra;      
   }
 
-      (* Extension to vectors *)
+      (* Extension to polyvecs *)
 
       proc encode10_vec(u : ipolyvec) : W8.t Array960.t = {
       var c : W8.t Array960.t;

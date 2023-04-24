@@ -9,7 +9,7 @@ require import Symmetric.
 require import Sampling.
 require import VecMat.
 require import Serialization.
-import KMatrix.
+import PolyMat.
 
 type pkey = W8.t Array1152.t * W8.t Array32.t.
 type skey = W8.t Array1152.t.
@@ -19,108 +19,108 @@ type ciphertext = W8.t Array960.t * W8.t Array128.t.
 module InnerPKE = {
 
   (* Spec gives a derandomized enc that matches this code *)
-    proc kg_derand(coins: W8.t Array32.t) : pkey * skey = {
-      var rho, sig, i, j, _N,c,t;
-      var tv,sv : W8.t Array1152.t;
-      var a : matrix;
-      var s,e : vector;
-      a <- witness;
-      e <- witness;
-      s <- witness;
-      sv <- witness;
-      tv <- witness;
-      (rho,sig) <- G_coins coins;
-      _N <- 0; 
-      i <- 0;
-      while (i < kvec) {
-        j <- 0;
-        while (j < kvec) {
-          XOF.init(rho, j, i);
-          c <@ Parse(XOF).sample();
-          a.[(i,j)] <- c;
-          j <- j + 1;
-        }
-        i <- i + 1;
-      }      
-      i <- 0;
-      while (i < kvec) {
-        c <@ CBD2.sample(PRF sig (W8.of_int _N));
-        s <- set s i c;
-        _N <- _N + 1;
-        i <- i + 1;
-      }         
-      i <- 0;
-      while (i < kvec) {
-        c <@ CBD2.sample(PRF sig (W8.of_int _N));
-        e <- set e i c;
-        _N <- _N + 1;
-        i <- i + 1;
-      }      
-      s <- nttv s;
-      e <- nttv e; 
-      t <- ntt_mmul a s + e;
-      tv <@ EncDec.encode12_vec(toipolyvec t); (* minimum residues *)
-        sv <@ EncDec.encode12_vec(toipolyvec s); (* minimum residues *)
-        return ((tv,rho),sv);
-    }
+  proc kg_derand(coins: W8.t Array32.t) : pkey * skey = {
+    var rho, sig, i, j, _N,c,t;
+    var tv,sv : W8.t Array1152.t;
+    var a : polymat;
+    var s,e : polyvec;
+    a <- witness;
+    e <- witness;
+    s <- witness;
+    sv <- witness;
+    tv <- witness;
+    (rho,sig) <- G_coins coins;
+    _N <- 0; 
+    i <- 0;
+    while (i < kvec) {
+      j <- 0;
+      while (j < kvec) {
+        XOF.init(rho, j, i);
+        c <@ Parse(XOF).sample();
+        a.[(i,j)] <- c;
+        j <- j + 1;
+      }
+      i <- i + 1;
+    }      
+    i <- 0;
+    while (i < kvec) {
+      c <@ CBD2.sample(PRF sig (W8.of_int _N));
+      s <- set s i c;
+      _N <- _N + 1;
+      i <- i + 1;
+    }         
+    i <- 0;
+    while (i < kvec) {
+      c <@ CBD2.sample(PRF sig (W8.of_int _N));
+      e <- set e i c;
+      _N <- _N + 1;
+      i <- i + 1;
+    }      
+    s <- nttv s;
+    e <- nttv e; 
+    t <- ntt_mmul a s + e;
+    tv <@ EncDec.encode12_vec(toipolyvec t); (* minimum residues *)
+    sv <@ EncDec.encode12_vec(toipolyvec s); (* minimum residues *)
+    return ((tv,rho),sv);
+  }
 
 
   (* Spec gives a derandomized enc that matches this code *)
-    proc enc_derand(pk : pkey, m : plaintext, coins : W8.t Array32.t) : ciphertext = {
-      var _N,i,j,c,tv,rho,rv,e1,e2,rhat,u,v,mp,c2,thati;
-      var that : vector;
-      var aT : matrix;
-      var c1 : W8.t Array960.t;
-      aT <- witness;
-      c1 <- witness;
-      e1 <- witness;
-      rv <- witness;
-      that <- witness;
-      (tv,rho) <- pk;
-      _N <- 0;
-      thati <@ EncDec.decode12_vec(tv); 
-      that <- ofipolyvec thati;
-      i <- 0;
-      while (i < kvec) {
-        j <- 0;
-        while (j < kvec) {
-          XOF.init(rho, i, j);
-          c <@ Parse(XOF).sample();
-          aT.[(i,j)] <- c; (* this is the transposed matrix *)
-            j <- j + 1;
-        }
-        i <- i + 1;
-      } 
-      i <- 0;
-      while (i < kvec) {
-        c <@ CBD2.sample(PRF coins (W8.of_int _N));
-        rv <- set rv i c;
-        _N <- _N + 1;
-        i <- i + 1;
-      }         
-      i <- 0;
-      while (i < kvec) {
-        c <@ CBD2.sample(PRF coins (W8.of_int _N));
-        e1 <- set e1 i c;
-        _N <- _N + 1;
-        i <- i + 1;
-      }      
-      e2 <@ CBD2.sample(PRF coins (W8.of_int _N));
-      rhat <- nttv rv;
-      u <- invnttv (ntt_mmul aT rhat) + e1;
-      mp <@ EncDec.decode1(m);
-      v <- invntt (ntt_dotp that rhat) &+ e2 &+ decompress_poly 1 mp; 
-      c1 <@ EncDec.encode10_vec(compress_polyvec 10 u); 
-      c2 <@ EncDec.encode4(compress_poly 4 v);
-      return (c1,c2);
-    }
+  proc enc_derand(pk : pkey, m : plaintext, coins : W8.t Array32.t) : ciphertext = {
+    var _N,i,j,c,tv,rho,rv,e1,e2,rhat,u,v,mp,c2,thati;
+    var that : polyvec;
+    var aT : polymat;
+    var c1 : W8.t Array960.t;
+    aT <- witness;
+    c1 <- witness;
+    e1 <- witness;
+    rv <- witness;
+    that <- witness;
+    (tv,rho) <- pk;
+    _N <- 0;
+    thati <@ EncDec.decode12_vec(tv); 
+    that <- ofipolyvec thati;
+    i <- 0;
+    while (i < kvec) {
+      j <- 0;
+      while (j < kvec) {
+        XOF.init(rho, i, j);
+        c <@ Parse(XOF).sample();
+        aT.[(i,j)] <- c; (* this is the transposed matrix *)
+        j <- j + 1;
+      }
+      i <- i + 1;
+    } 
+    i <- 0;
+    while (i < kvec) {
+      c <@ CBD2.sample(PRF coins (W8.of_int _N));
+      rv <- set rv i c;
+      _N <- _N + 1;
+      i <- i + 1;
+    }         
+    i <- 0;
+    while (i < kvec) {
+      c <@ CBD2.sample(PRF coins (W8.of_int _N));
+      e1 <- set e1 i c;
+      _N <- _N + 1;
+      i <- i + 1;
+    }      
+    e2 <@ CBD2.sample(PRF coins (W8.of_int _N));
+    rhat <- nttv rv;
+    u <- invnttv (ntt_mmul aT rhat) + e1;
+    mp <@ EncDec.decode1(m);
+    v <- invntt (ntt_dotp that rhat) &+ e2 &+ decompress_poly 1 mp; 
+    c1 <@ EncDec.encode10_vec(compress_polyvec 10 u); 
+    c2 <@ EncDec.encode4(compress_poly 4 v);
+    return (c1,c2);
+  }
 
   (*XXX: ask about this! *)
   (*proc dec(sk : skey, cph : ciphertext) : plaintext option = { *)
 
   proc dec(sk : skey, cph : ciphertext) : plaintext = {
     var m,mp,ui,v,vi,si, c1, c2;
-    var u,s : vector;
+    var u,s : polyvec;
     u <- witness;
     s <- witness;
     (c1,c2) <- cph;
