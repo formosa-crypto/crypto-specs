@@ -28,7 +28,7 @@ module Parse(XOF : XOF_t) = {
         d1 <- to_uint bi        + 256 * (to_uint bi1 %% 16);
         d2 <- to_uint bi1 %/ 16 + 16  *  to_uint bi2;
         if (d1 < q)                { aa.[j] <- incoeff d1; j <- j + 1; }
-        if ((d2 < q) && (j < 256)) { aa.[j] <- incoeff d2; j <- j + 1; }
+          if ((d2 < q) && (j < 256)) { aa.[j] <- incoeff d2; j <- j + 1; }
       }
     }
     return aa;

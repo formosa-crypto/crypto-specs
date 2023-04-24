@@ -96,22 +96,16 @@ op invntt(p : poly) = Array256.init (fun i =>
   then let ii = i %/ 2 in BAdd.bigi predT (fun j => inv (incoeff 128) * p.[2*j]   * ZqRing.exp zroot (-((2 * br j + 1) * ii))) 0 128
   else let ii = i %/ 2 in BAdd.bigi predT (fun j => inv (incoeff 128) * p.[2*j+1] * ZqRing.exp zroot (-((2 * br j + 1) * ii))) 0 128) axiomatized by invnttE.
 
-  (* This is multiplication of two degree-1 polynomials in coeff
-  modulo X^2 - zroot.
+(* This is multiplication of two degree-1 polynomials in coeff modulo X^2 - zroot.
   
-  (a1 + a2 X) * (b1 + b2 X) mod (X^2 - zroot) = 
+  (a1 + a2 X) * (b1 + b2 X) mod (X^2 - zroot) = (a2b2zroot + a1b1) + (a1b2 + a2b1)X 
 
-  (a2b2zroot + a1b1) + (a1b2 + a2b1)X 
-
-
-  And its extension to two products, one over   
-  (X^2 - zroot) and another one over (X^2 + zroot)
+  and its extension to two products, one over   (X^2 - zroot) and another one over (X^2 + zroot) 
   *)
 op cmplx_mul (a :coeff * coeff, b : coeff * coeff, zzeta : coeff) : coeff * coeff =
 (a.`2 * b.`2 * zzeta + a.`1*b.`1, a.`1 * b.`2 + a.`2 * b.`1).
 
-  (* The base multiplication in the NTT domain is defined in the
-  spec as follows. *)
+(* The base multiplication in the NTT domain is defined in the spec as follows. *)
 
 op basemul(a b : poly) :  poly = Array256.init (fun i =>
   if i %% 2  = 0 
@@ -128,5 +122,4 @@ op oner = one,
 op (+) = (&+),
 op [-] = (&-),
 op ( * ) =(&*).
-
 

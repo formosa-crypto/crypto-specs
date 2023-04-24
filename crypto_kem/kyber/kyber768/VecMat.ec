@@ -4,15 +4,16 @@ op kvec : int = 3.
 
 require Matrix.
 clone import Matrix as PolyMat with
-op size <- kvec,
-theory ZR <- Rq
-rename "Vector" as "PolyVec"
-rename "vector" as "polyvec"
-rename "matrix" as "polymat".
+  op size <- kvec,
+  theory ZR <- Rq
+  rename "Vector" as "PolyVec"
+  rename "vector" as "polyvec"
+  rename "matrix" as "polymat".
 
-import PolyVec.
+  import PolyVec.
 
-(* This should be added to matrix *)
+
+(* This should be added to Matrix *)
 op "_.[_<-_]" (m : polymat) (ij : int * int) (c : poly) : polymat = 
 offunm (fun i j => if (i,j) = ij then c else (tofunm m) i j).
 
@@ -29,8 +30,8 @@ op invnttv v = mapv invntt v.
 op invnttm m = mapm invntt m.
 
 op ntt_mmul(m : polymat, v : polyvec) : polyvec = 
-  offunv (fun (i : int) => (Big.BAdd.bigi predT (fun (j : int) => basemul m.[i, j] v.[j]) 0 kvec)).
+offunv (fun (i : int) => (Big.BAdd.bigi predT (fun (j : int) => basemul m.[i, j] v.[j]) 0 kvec)).
 
 op ntt_dotp(v1 v2 : polyvec) : poly = 
-  Big.BAdd.bigi predT (fun (i : int) => basemul v1.[i] v2.[i]) 0 kvec.
+Big.BAdd.bigi predT (fun (i : int) => basemul v1.[i] v2.[i]) 0 kvec.
 

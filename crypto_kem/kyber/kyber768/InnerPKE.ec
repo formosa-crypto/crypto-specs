@@ -11,6 +11,8 @@ require import VecMat.
 require import Serialization.
 import PolyMat.
 
+theory InnerPKE.
+
 type pkey = W8.t Array1152.t * W8.t Array32.t.
 type skey = W8.t Array1152.t.
 type plaintext = W8.t Array32.t.
@@ -137,3 +139,4 @@ module InnerPKE = {
   }
 }.
 
+end InnerPKE.
