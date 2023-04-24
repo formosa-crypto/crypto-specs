@@ -117,9 +117,6 @@ module InnerPKE = {
     return (c1,c2);
   }
 
-  (*XXX: ask about this! *)
-  (*proc dec(sk : skey, cph : ciphertext) : plaintext option = { *)
-
   proc dec(sk : skey, cph : ciphertext) : plaintext = {
     var m,mp,ui,v,vi,si, c1, c2;
     var u,s : polyvec;
@@ -134,7 +131,6 @@ module InnerPKE = {
     s <- ofipolyvec si;
     mp <- v &+ ((&-) (invntt (ntt_dotp s (nttv u))));
     m <@ EncDec.encode1(compress_poly 1 mp);
-    (*return Some m;*)
     return m;
   }
 }.
