@@ -5,6 +5,7 @@ require import Array25 Array32 Array64 Array128 Array168 Array256 Array960 Array
 
 (* XXX: Link to specs of Keccak functions *)
 op SHA3_256_32_32 : W8.t Array32.t -> W8.t Array32.t.
+
 (* XXX: Writing input type as "product" is probably terrible for domain separation checking *)
 op SHA3_256_1088_32 : W8.t Array960.t * W8.t Array128.t -> W8.t Array32.t.
 (* XXX: same here *)
