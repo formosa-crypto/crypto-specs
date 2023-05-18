@@ -1,5 +1,5 @@
 EASYCRYPT = easycrypt
-EC_PARAMS = -I ../common -I ../../common -I ../../../common
+EC_PARAMS = -I ../common -I ../fips202
 
 .PHONY: clean typecheck
 
