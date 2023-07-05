@@ -42,13 +42,13 @@ op idx (xy: int*int): int = (xy.`1 %% 5) + (5 * (xy.`2 %% 5)).
 
 (** Section 3.1.2 - Converting Strings to Arrays *) 
 op state2bits (st: state): bool list =
- w64L2bits (to_list st).
+ w64L_to_bits (to_list st).
 
 
 (** Section 3.1.3 - Converting State Arrays to Strings
     obs: note that it zero-pads or truncates the bitstring *)
 op bits2state (bs: bool list): state =
- Array25.of_list W64.zero (bits2w64L bs).
+ Array25.of_list W64.zero (w64L_from_bits bs).
 
 
 (** Section 3.2 - Step Mappings *)
