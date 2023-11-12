@@ -886,6 +886,32 @@ op sem_decode10_vec(a : W8.t Array960.t) : ipolyvec =
 op sem_decode12_vec(a : W8.t Array1152.t) : ipolyvec = 
    Array768.of_list 0 (decode_vec 12 (BytesToBits (to_list a))).
 
+lemma ofipolyvecK_small (x : ipolyvec) :
+    (forall k, 0 <= k < 768 => 0 <= x.[k] < q) =>  toipolyvec (ofipolyvec x) = x.
+move => bnd.
+rewrite /ofipolyvec /toipolyvec /fromarray256 /subarray256.
+apply Array768.ext_eq => k kb.
+rewrite mapiE //= initiE //=.
+case (0 <= k && k < 256). 
++ move => *. rewrite !setvE !getvE zerovE //= offunvE //=.
+rewrite !offunvK /vclamp /kvec /= mapiE //= initiE //= incoeffK; smt(modz_small).
+move => *;case (256 <= k && k < 512). 
++ move => *;rewrite !setvE !getvE zerovE //= offunvE //=. 
+rewrite !offunvK /vclamp /kvec /= mapiE 1:/# initiE 1:/#  incoeffK; smt(modz_small).
+move => *; rewrite !setvE !getvE zerovE offunvE //= mapiE 1:/# initiE 1:/# incoeffK; smt(modz_small).
+qed.
+
+lemma toipolyvecK (x : PolyVec.polyvec) :
+   ofipolyvec (toipolyvec x) = x.
+rewrite /ofipolyvec /toipolyvec /fromarray256 /subarray256.
+apply eq_vectorP => i ib.
+rewrite !setvE !getvE zerovE //=  offunvE //=.
+apply Array256.tP => k kb.
+rewrite !offunvK /vclamp /kvec /=. 
+case(i = 0); 1: by move => -> /=;rewrite mapiE //= initiE //= mapiE 1:/# initiE 1:/# /= asintK /#.
+case(i = 1); 1: by move => -> /=;rewrite mapiE //= initiE //= mapiE 1:/# initiE 1:/# /= asintK /#.
+move => * /=; rewrite ifT 1:/# mapiE //= initiE //= mapiE 1:/# initiE 1:/# /= asintK /#.
+qed.
 
 (************************************)
 (************************************)
@@ -911,7 +937,36 @@ clone import PRF_DEFS.PseudoRF as PRF_ with
 
 module KPRF = PRF_.PseudoRF.
 
-module CBD2_SPEC(PRF : PseudoRF) = {
+print CBD2.
+module CBD2_PRF(PRF : PseudoRF) = {
+   proc sample(sig : W8.t Array32.t, _N : int) : poly = {
+    var i : int;
+    var j : int;
+    var a : int;
+    var b : int;
+    var rr : poly;
+    var bytes;
+    
+    rr <- witness;
+     bytes <@ PRF.f(sig, W8.of_int _N);
+
+    i <- 0;
+    j <- 0;
+    while (i < 128){
+      a <- b2i bytes.[i].[j %% 2 * 4 + 0] + b2i bytes.[i].[j %% 2 * 4 + 1];
+      b <- b2i bytes.[i].[j %% 2 * 4 + 2] + b2i bytes.[i].[j %% 2 * 4 + 3];
+      rr.[j] <- incoeff (a - b);
+      j <- j + 1;
+      a <- b2i bytes.[i].[j %% 2 * 4 + 0] + b2i bytes.[i].[j %% 2 * 4 + 1];
+      b <- b2i bytes.[i].[j %% 2 * 4 + 2] + b2i bytes.[i].[j %% 2 * 4 + 3];
+      rr.[j] <- incoeff (a - b);
+      j <- j + 1;
+      i <- i + 1;
+    }
+    
+    return rr;
+   }
+
    proc sample_spec(sig : W8.t Array32.t, _N : int) : poly = {
       var i,a,b,bytes,bits;
       var rr : poly;
@@ -930,18 +985,21 @@ module CBD2_SPEC(PRF : PseudoRF) = {
    }
 }.
 
+equiv cbd_correct : 
+  CBD2_PRF(PseudoRF).sample ~ CBD2.sample :
+  arg{2} = SHAKE256_33_128 arg{1}.`1 (W8.of_int arg{1}.`2) ==> ={res}
+by proc => /=;inline *;sim;auto.
+
 equiv cbdspec_correct (PRF <: PseudoRF): 
-  CBD2_SPEC(PseudoRF).sample_spec ~ CBD2.sample :
-  arg{2} = SHAKE256_33_128 arg{1}.`1 (W8.of_int arg{1}.`2) ==> ={res}.
+  CBD2_PRF(PRF).sample_spec ~ CBD2_PRF(PRF).sample :  ={arg,glob PRF} ==> ={res}.
 proc => /=. 
-seq 2 1 : (#pre /\ ={rr,bytes}); 1: by inline *;auto => />.
+seq 2 2 : (#pre /\ ={rr,bytes});1: by call(_: true);auto => />.
 swap {2}1 1.
 unroll for {1} ^while;
 unroll for {2} ^while;
-sim; auto =>/> &1 &2;
-pose bytes := (SHAKE256_33_128 sig{1} ((of_int _N{1}))%W8);
-have H : forall i, 0<=i<1024 => (nth false (BytesToBits (to_list bytes)) i) = 
-                   bytes.[i%/8].[i%%8]; last by rewrite !H //=.
+sim; auto =>/> &2;
+have H : forall i, 0<=i<1024 => (nth false (BytesToBits (to_list bytes{2})) i) = 
+                   bytes{2}.[i%/8].[i%%8]; last by rewrite !H //=.
 move => i Hi. 
 rewrite /BytesToBits (nth_flatten false 8 (map W8.w2bits (to_list bytes{2})) _).
 + rewrite allP => k /=.
@@ -950,7 +1008,6 @@ rewrite /BytesToBits (nth_flatten false 8 (map W8.w2bits (to_list bytes{2})) _).
 rewrite -get_to_list (nth_map  witness%W8); 1: smt(Array128.size_to_list).
 rewrite w2bitsE /= nth_mkseq /#.
 qed.
-
 
 require import DMap Array168 DList.
 clone DMapSampling as MSlw168 with
@@ -1528,8 +1585,6 @@ qed.
 (*************************************************************************)
 (**   Properties related to the NTT formalisation                       **)
 (*************************************************************************)
-
-theory NTT_Properties.
 
 lemma exp_neg1_2 :
   Zq.exp (incoeff (-1)) 2 = Zq.one.
@@ -2445,6 +2500,4 @@ qed.
 lemma nttvecinv v i: 0 <= i < kvec => ntt ((invnttv v).[i])%PolyVec = (v.[i])%PolyVec
   by move => ib; rewrite /invnttv mapvE /= !getvE  offunvE //= nttK.
 
-
-end NTT_Properties.
 
