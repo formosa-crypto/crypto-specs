@@ -9,7 +9,7 @@ require import Symmetric.
 require import Sampling.
 require import VecMat.
 require import Serialization.
-import PolyMat.
+import PolyMat PolyVec.
 
 theory InnerPKE.
 
@@ -47,14 +47,14 @@ module InnerPKE = {
     i <- 0;
     while (i < kvec) {
       c <@ CBD2.sample(PRF sig (W8.of_int _N));
-      s <- set s i c;
+      s <- s.[i<-c];
       _N <- _N + 1;
       i <- i + 1;
     }         
     i <- 0;
     while (i < kvec) {
       c <@ CBD2.sample(PRF sig (W8.of_int _N));
-      e <- set e i c;
+      e <- e.[i<-c];
       _N <- _N + 1;
       i <- i + 1;
     }      
@@ -69,10 +69,11 @@ module InnerPKE = {
 
   (* Spec gives a derandomized enc that matches this code *)
   proc enc_derand(pk : pkey, m : plaintext, coins : W8.t Array32.t) : ciphertext = {
-    var _N,i,j,c,tv,rho,rv,e1,e2,rhat,u,v,mp,c2,thati;
+    var _N,i,j,c,tv,rho,e2,rhat,u,v,mp,c2,thati;
     var that : polyvec;
     var aT : polymat;
     var c1 : W8.t Array960.t;
+    var rv,e1 : polyvec;
     aT <- witness;
     c1 <- witness;
     e1 <- witness;
@@ -96,14 +97,14 @@ module InnerPKE = {
     i <- 0;
     while (i < kvec) {
       c <@ CBD2.sample(PRF coins (W8.of_int _N));
-      rv <- set rv i c;
+      rv <- rv.[i<-c];
       _N <- _N + 1;
       i <- i + 1;
     }         
     i <- 0;
     while (i < kvec) {
       c <@ CBD2.sample(PRF coins (W8.of_int _N));
-      e1 <- set e1 i c;
+      e1 <- e1.[i<-c];
       _N <- _N + 1;
       i <- i + 1;
     }      

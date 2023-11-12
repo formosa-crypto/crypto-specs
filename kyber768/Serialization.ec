@@ -10,7 +10,7 @@ import Zq.
 require import Rq.
 
 require import VecMat.
-import PolyMat.
+import PolyVec PolyMat.
 
 
 type ipoly = int Array256.t.
@@ -23,32 +23,36 @@ op [a] subarray256(x : 'a Array768.t, i : int) =
 Array256.init (fun k => x.[256*i + k]).
 
 op [a] fromarray256(a0 a1 a2 : 'a Array256.t) : 'a Array768.t = 
-Array768.init (fun k => if 0 <= k < 256
-  then a0.[k]
-else if 256 <= k < 512
-then a1.[k-256] 
-else a2.[k-512]).   
+  Array768.init (fun k => if 0 <= k < 256
+                        then a0.[k]
+                        else if 256 <= k < 512
+                             then a1.[k-256] 
+                             else a2.[k-512]).   
 
 op [a] subarray384(x : 'a Array1152.t, i : int) =
-Array384.init (fun k => x.[384*i + k]).
+      Array384.init (fun k => x.[384*i + k]).
 
 op [a] fromarray384(a0 a1 a2 : 'a Array384.t) : 'a Array1152.t = 
 Array1152.init (fun k => if 0 <= k < 384
-  then a0.[k]
-else if 384 <= k < 768
-then a1.[k-384] 
-else a2.[k-768]).   
+                         then a0.[k]
+                         else if 384 <= k < 768
+                         then a1.[k-384] 
+                         else a2.[k-768]).   
 
 op toipolyvec(p : polyvec) : ipolyvec = map asint (fromarray256 p.[0] p.[1] p.[2]).
 
-op ofipolyvec(p : ipolyvec) =  offunv (fun k => map incoeff (subarray256 p k)).
+op ofipolyvec(p : ipolyvec) : polyvec =  
+    zerov.[0 <- map incoeff (subarray256 p 0)]
+         .[1 <- map incoeff (subarray256 p 1)]
+         .[2 <- map incoeff (subarray256 p 2)].
 
 op compress_polyvec(d : int, p : polyvec) : ipolyvec =  
-map (compress d) (fromarray256 p.[0] p.[1] p.[2]).
+     map (compress d) (fromarray256 p.[0] p.[1] p.[2]).
 
 op decompress_polyvec(d : int, p : ipolyvec) =  
-offunv (fun k => map (decompress d) (subarray256 p k)).
-
+    zerov.[0 <- map (decompress d) (subarray256 p 0)]
+         .[1 <- map (decompress d) (subarray256 p 1)]
+         .[2 <- map (decompress d) (subarray256 p 2)].
 
 (* To avoid loop matching pain with the implementation
  we adopt the same control structure and specify EncDec
@@ -205,3 +209,16 @@ module EncDec = {
   }
 
 }.
+
+(* Fixme: Move to properties file. Needs EC feature. *)
+proc op encode4 = EncDec.encode4.
+proc op encode1 = EncDec.encode1.
+proc op encode10_vec = EncDec.encode10_vec.
+proc op encode12 = EncDec.encode12.
+proc op encode12_vec = EncDec.encode12_vec.
+
+proc op decode4 = EncDec.decode4.
+proc op decode1 = EncDec.decode1.
+proc op decode10_vec = EncDec.decode10_vec.
+proc op decode12 = EncDec.decode12.
+proc op decode12_vec = EncDec.decode12_vec.

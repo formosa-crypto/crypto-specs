@@ -2,36 +2,33 @@ require import Rq.
 
 op kvec : int = 3. 
 
-require Matrix.
-clone import Matrix as PolyMat with
-  op size <- kvec,
-  theory ZR <- Rq
-  rename "Vector" as "PolyVec"
-  rename "vector" as "polyvec"
-  rename "matrix" as "polymat".
-
-  import PolyVec.
-
-
-(* This should be added to Matrix *)
-op "_.[_<-_]" (m : polymat) (ij : int * int) (c : poly) : polymat = 
-offunm (fun i j => if (i,j) = ij then c else (tofunm m) i j).
-
-op set (v : polyvec) (i : int) (c : poly) : polyvec = 
-offunv (fun i' => if i = i' then c else (tofunv v) i').
-
-op mapm(f : poly -> poly, m : polymat) = offunm (fun i j => f (tofunm m i j)).
-op mapv(f : poly -> poly, v : polyvec) = offunv (fun i => f (tofunv v i)).
-(***********)
-
+theory PolyVec.
+type polyvec.
+op "_.[_]" (v : polyvec) (i : int) : poly.
+op "_.[_<-_]" (v : polyvec) (i : int) (c : poly) : polyvec.
+op mapv(f : poly -> poly, v : polyvec) : polyvec.
 op nttv v = mapv ntt v.
-op nttm m = mapm ntt m.
 op invnttv v = mapv invntt v.
+op zerov : polyvec.
+op (+) : polyvec -> polyvec -> polyvec.
+end PolyVec.
+
+theory PolyMat.
+type polymat.
+op "_.[_]" (m : polymat) (ij : int * int) : poly.
+op "_.[_<-_]" (m : polymat) (ij : int * int) (c : poly) : polymat.
+op mapm(f : poly -> poly, m : polymat) : polymat.
+op nttm m = mapm ntt m.
 op invnttm m = mapm invntt m.
+op zerom : polymat. 
+end PolyMat.
+
+import PolyVec PolyMat.
 
 op ntt_mmul(m : polymat, v : polyvec) : polyvec = 
-offunv (fun (i : int) => (Big.BAdd.bigi predT (fun (j : int) => basemul m.[i, j] v.[j]) 0 kvec)).
+   zerov.[0 <- basemul m.[0, 0] v.[0] &+ basemul m.[0, 1] v.[1] &+ basemul m.[0, 2] v.[2]]
+        .[1 <- basemul m.[1, 0] v.[0] &+ basemul m.[1, 1] v.[1] &+ basemul m.[1, 2] v.[2]]
+        .[2 <- basemul m.[2, 0] v.[0] &+ basemul m.[2, 1] v.[1] &+ basemul m.[2, 2] v.[2]].
 
 op ntt_dotp(v1 v2 : polyvec) : poly = 
-Big.BAdd.bigi predT (fun (i : int) => basemul v1.[i] v2.[i]) 0 kvec.
-
+   basemul v1.[0] v2.[0] &+ basemul v1.[1] v2.[1] &+ basemul v1.[2] v2.[2].

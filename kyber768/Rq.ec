@@ -7,11 +7,12 @@ require import Array256.
 require import GFq.
 import Zq.
 
-(*****************************************************)
-(* Representations of polynomials in Zq[X]/(X^256+1) *)
-(*****************************************************)
+(******************************************************)
+(* Representations of polynomials in Zq[X]/(X^256+1)  *)
+(* We use an array representation for both Rq and ntt *)
+(* domain.                                            *)
+(******************************************************)
 
-(* XXX: Exlain why we don't use the EC math theory PolyReduce in the spec *)
 type poly = coeff Array256.t.
 
 op zero : poly = Array256.create Zq.zero.
@@ -65,7 +66,7 @@ op  CR.( * ) <- Zq.( * ),
 op  CR.invr  <- Zq.inv,
 op  CR.ofint <- ZqRing.ofint,
 pred  CR.unit  <- Zq.unit
-proof CR.*.
+proof *.
 
 realize CR.addrA     by apply ZqRing.addrA.
 realize CR.addrC     by apply ZqRing.addrC.
@@ -79,7 +80,6 @@ realize CR.mulrDl    by apply ZqRing.mulrDl.
 realize CR.mulVr     by apply ZqRing.mulVr.
 realize CR.unitP     by apply ZqRing.unitP.
 realize CR.unitout   by apply ZqRing.unitout.
-
 
 op zroot = incoeff 17.
 
@@ -113,13 +113,4 @@ op basemul(a b : poly) :  poly = Array256.init (fun i =>
   (cmplx_mul (a.[2*ii],a.[2*ii+1]) (b.[2*ii],b.[2*ii+1]) (ZqRing.exp zroot ((2 * br ii + 1)))).`1
   else let ii = i %/ 2 in 
   (cmplx_mul (a.[2*ii],a.[2*ii+1]) (b.[2*ii],b.[2*ii+1]) (ZqRing.exp zroot ((2 * br ii + 1)))).`2).
-
-
-clone import Ring.ComRing as Rq with
-type t = poly,
-op zeror = zero,
-op oner = one,
-op (+) = (&+),
-op [-] = (&-),
-op ( * ) =(&*).
 

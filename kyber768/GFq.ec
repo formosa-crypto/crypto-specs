@@ -9,7 +9,8 @@ clone import ZModField as Zq with
   op p <- q 
   rename "zmod" as "coeff"
   rename "ZModp" as "Zq"
-  proof  prime_p by apply prime_q.
+  proof  prime_p by apply prime_q
+  proof *.
 
 (* Signed representation *)
 op as_sint(x : coeff) = if (q-1) %/ 2 < asint x then asint x - q else asint x.
