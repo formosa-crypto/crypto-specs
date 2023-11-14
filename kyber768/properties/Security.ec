@@ -1,12 +1,18 @@
-(* require import AllCore ZModP IntDiv Distr List DList PKE_ROM.
+require import AllCore  IntDiv Distr List DList PKE_ROM.
+require import Array32 Array64 Array128 Array168 Array256 Array384.
+require import Array768 Array960 Array1024 Array1152.
 from Jasmin require import JWord.
-require import Kyber KyberLib.
-require import EncDecCorrectness.
-import NTT_Properties.
-(* Aux *)
-import KMatrix.
-import Zq.
-*)
+
+(*******************************************************************)
+(*    The security definitions for the spec                        *)
+(*******************************************************************)
+
+clone import PKE_ROM as KyberPKE with 
+  type pkey = W8.t Array1152.t * W8.t Array32.t,
+  type skey = W8.t Array1152.t,
+  type plaintext = W8.t Array32.t,
+  type ciphertext = W8.t Array960.t * W8.t Array128.t.
+import RO.
 
 
 (**************************************************************************
@@ -24,14 +30,10 @@ import Zq.
    how the Kyber spec functionally maps to this algebraic version
    and then derive the properties as corollaries.
 ***************************************************************************)
-require import AllCore  IntDiv Distr List DList PKE_ROM.
-require import Array32 Array64 Array128 Array168 Array256 Array384.
-require import Array768 Array960 Array1024 Array1152.
 
 
 require import MLWE_PKE.
 require import GFq Rq  VecMat Sampling Symmetric Serialization InnerPKE Kyber Correctness EncDecCorrectness KyberLib.
-from Jasmin require import JWord.
 
 import KMatrix PolyVec PolyMat InnerPKE Zq.
 
@@ -62,15 +64,12 @@ op cv_bound_max : int = 104. (* this is the compress error bound for d = 4 *)
 
 op dplaintext : plaintext distr = srand.
 
-require import PROM.
-clone FullRO as RO.
-
 clone import MLWE_PKE as MLWEPKE with 
-  type MLWE_.MLWE_SMP.RO_SMP.in_t    = RO.in_t,
-  type MLWE_.MLWE_SMP.RO_SMP.out_t   = RO.out_t,  
-  op   MLWE_.MLWE_SMP.RO_SMP.dout    = RO.dout,  
-  type MLWE_.MLWE_SMP.RO_SMP.d_in_t  = RO.d_in_t, 
-  type MLWE_.MLWE_SMP.RO_SMP.d_out_t = RO.d_out_t,   
+  type MLWE_.MLWE_SMP.RO_SMP.in_t    = in_t,
+  type MLWE_.MLWE_SMP.RO_SMP.out_t   = out_t,  
+  op   MLWE_.MLWE_SMP.RO_SMP.dout    = dout,  
+  type MLWE_.MLWE_SMP.RO_SMP.d_in_t  = d_in_t, 
+  type MLWE_.MLWE_SMP.RO_SMP.d_out_t = d_out_t,   
   type MLWE_.Matrix_.R = poly,
   type MLWE_.Matrix_.Matrix.matrix <- polymat,
   type MLWE_.Matrix_.vector <- polyvec,
@@ -368,7 +367,7 @@ clone PRF as HS_DEFS with
 clone import HS_DEFS.PseudoRF as HSF with
   type K <- W8.t Array32.t, 
   op dK <- srand,
-  op F <- fun i _ => SHA3_512_32_64 i.
+  op F <- fun i _ => G_coins i.
 
 module KHS = HSF.PseudoRF.
 
@@ -541,44 +540,92 @@ module InnerPKE_rnd = {
    
 }.
 
-(* STOPPED HERE: WE PROBABLY WANT TO GO WITH PKE_HASH *)
+module XOF_Dummy(O : SMP_RO) = {
+   include XOF
+}.
 
-(* We have that instantiating S with KSampler we get the Spec *)
-lemma kg_sampler_kg (O <: SMP_RO) :
-  equiv [   KyberS(KHS,KSampler(XOF),KNS,KPRF,KPRF,O).kg ~ InnerPKE_rnd.kg : 
+lemma getv_setvE x i j (v : polyvec) : 
+  (v.[i <- x].[j])%Vector = if (0 <= j < kvec) then if (i = j) then x else (v.[j])%Vector else Rq.zero
+  by smt(setvE getv_out offunvE).
+
+(* We have that instantiating S with KSampler(XOF_Dummy) we get the Spec *)
+lemma kg_sampler_kg (O <: SMP_RO {-XOF}) :
+  equiv [   KyberS(KHS,KSampler(XOF_Dummy),KNS,KPRF,KPRF,O).kg ~ InnerPKE_rnd.kg : 
      ={arg} /\ ={glob O, glob XOF} ==> ={res, glob O, glob XOF}].
-proc;inline*. swap{1} 24 -8. swap{2} [4..5] 12.
-seq 18 13: (#pre /\ sig1{1} = sig{2} /\ rho1{1} = rho{2}  /\ 
-            a0{1} = a{2} /\ _N{1} = _N{2} /\ sd{1} = rho{2}); 1: by  auto.
-by sim => />; wp; sim />.
+proc. 
+inline {1} 3; inline {2} 2. sim.
+inline {1} 10. wp;conseq />.
+while (noise1{1} = s0{2} /\ rho0{1} = rho{2} /\ noiseseed{1} = sig{2} /\
+       ={i,_N,a,XOF.state} /\
+       0<=i{1}<=kvec /\ 
+       forall k, 0 <=k < i{1} => (noise2{1}.[k])%Vector = (e{2}.[k])%Vector).
++ wp; conseq(_: ={c}); 1: by smt(getv_setvE).  
+  by inline*; sim; auto => />. 
+wp;conseq (: noise1{1} = s0{2} /\ 
+             rho0{1} = rho{2} /\
+             noiseseed{1} = sig{2} /\
+             ={_N, a, XOF.state}); first by smt(eq_vectorP).
+while (rho0{1} = rho{2} /\ noiseseed{1} = sig{2} /\
+       ={i,_N,a,XOF.state} /\
+       0<=i{1}<=kvec /\ 
+       forall k, 0 <=k < i{1} => (noise1{1}.[k])%Vector = (s0{2}.[k])%Vector).
++ wp; conseq(_: ={c}); 1: by smt(getv_setvE).  
+  by inline*; sim; auto => />. 
+swap {2} 9 2. swap {1} [10..12] -1.  
+wp;conseq (: rho0{1} = rho{2} /\ 
+             noiseseed{1} = sig{2} /\
+             ={a, XOF.state}); 1: by smt(eq_vectorP).
+by inline *;sim;auto => />.
 qed.
 
-lemma enc_sampler_enc (O <: SMP_RO)  (XOF <: XOF_t {-O}):
+lemma enc_sampler_enc (O <: SMP_RO {-XOF}) :
  equiv [
-   KyberS(KHS,KSampler(XOF),KNS,KPRF,KPRF,O).enc ~ Kyber(KHS,XOF,KPRF,O).enc : 
+   KyberS(KHS,KSampler(XOF_Dummy),KNS,KPRF,KPRF,O).enc ~ InnerPKE_rnd.enc : 
     ={arg} /\ ={glob O, glob XOF} ==> ={res, glob O, glob XOF}].
 proc. 
-inline {1} 2; inline {2} 2. 
-swap {2} 11 4. swap {2} [7..8] 6. swap{2} 5 5.
-seq 12 9: (#pre /\ ={that, r0, m, m0, rho}); 1: by inline *; sim.
-by inline *;sim />; wp; sim =>/> /#.
+inline {1} 2; inline {2} 2. sim.
+inline {1} 14. 
+wp;conseq />.
+inline {1} 22. inline {1} 25. inline {2} 20. swap {2} 21 -1.  
+sim;wp;conseq (: ={that,_N,m0,aT,XOF.state} /\
+  noise2{1} = e1{2} /\
+  noise1{1} = rv{2} /\
+  noiseseed{1} = coins{2}); 1: smt().
+while (={i, that, _N, m0, aT, XOF.state} /\ noise1{1} = rv{2} /\ noiseseed{1} = coins{2} /\
+       0<=i{1}<=kvec /\ 
+       forall k, 0 <=k < i{1} => (noise2{1}.[k])%Vector = (e1{2}.[k])%Vector).
++ wp; conseq(_: ={c0}); 1: by smt(getv_setvE).  
+  by inline*; sim; auto => />. 
+wp;conseq (: ={that,_N,m0,aT,XOF.state} /\
+  noise1{1} = rv{2} /\
+  noiseseed{1} = coins{2}); first by smt(eq_vectorP).
+while (={i, that, _N, m0, aT, XOF.state} /\ noiseseed{1} = coins{2} /\
+       0<=i{1}<=kvec /\ 
+       forall k, 0 <=k < i{1} => (noise1{1}.[k])%Vector = (rv{2}.[k])%Vector).
++ wp; conseq(_: ={c0}); 1: by smt(getv_setvE).  
+  by inline*; sim; auto => />. 
+swap {2} 11 4. swap {1} [14..16] -1.  
+wp;conseq (: ={that, m0, aT, XOF.state} /\ noiseseed{1} = coins{2}); 1: by smt(eq_vectorP).
+inline {1} 16. 
+wp;conseq />;sim.
+wp;conseq />. 
+call(_: true); 1: by sim.
+by inline *;auto => />.
 qed.
 
-lemma enc_sampler_dec (O <: SMP_RO)  (XOF <: XOF_t) :
-  equiv [ KyberS(KHS,KSampler(XOF),KNS,KPRF,KPRF,O).dec ~ Kyber(KHS,XOF,KPRF,O).dec : 
-     ={arg} /\ ={glob O} ==> ={res} ] by proc;inline *;sim => /#.
+lemma enc_sampler_dec (O <: SMP_RO)  :
+  equiv [ KyberS(KHS,KSampler(XOF_Dummy),KNS,KPRF,KPRF,O).dec ~ InnerPKE_rnd.dec : 
+     ={arg} /\ ={glob O} ==> res{1} = Some res{2} ] by proc;inline *;sim => /#.
+
 
 (*******************************************************************)
 (*    Entropy Smoothing and PRF hops  for Security                 *)
 (*******************************************************************)
 
-abbrev dsmooth = darray64 W8.dword.
+abbrev dsmooth = darray32 W8.dword `*` darray32 W8.dword.
 
-lemma dsmooth_ll: is_lossless dsmooth.
-proof.
-apply darray64_ll.
-by apply W8.dword_ll.
-qed.
+lemma dsmooth_ll: is_lossless dsmooth
+  by apply dprod_ll;split;apply darray32_ll;apply W8.dword_ll.
 
 clone import HS_DEFS.RF as IdealHSF with
    op dR = fun (_: unit) => dsmooth
@@ -602,12 +649,12 @@ clone import PRF_DEFS.RF as IdealPRF2 with
 
 module DummyHS_D(F : HS_DEFS.PRF_Oracles) = {
    proc keygen() : W8.t Array32.t = { return witness;}
-   proc f(inp : W8.t Array32.t * unit) : W8.t Array64.t = { var out; out <@ F.f(); return out; }
+   proc f(inp : W8.t Array32.t * unit) : W8.t Array32.t * W8.t Array32.t = { var out; out <@ F.f(); return out; }
 }.
 
 module DummyHS(F : HS_DEFS.PRF_Oracles) = {
    proc keygen() : W8.t Array32.t = { IdealHSF.RF.m <- SmtMap.empty; return witness;}
-   proc f(inp : W8.t Array32.t * unit) : W8.t Array64.t = { var out; out <@ F.f(); return out; }
+   proc f(inp : W8.t Array32.t * unit) : W8.t Array32.t * W8.t Array32.t = { var out; out <@ F.f(); return out; }
 }.
 
 module (D_ES(S : Sampler, O : RO, As : KyberPKE.Adversary) : HS_DEFS.Distinguisher) (F : HS_DEFS.PRF_Oracles)  = {
@@ -720,12 +767,13 @@ have -> : Pr[CPA(O,KyberS(KHS, S, KNS, KPRF,KPRF), As).main() @ &m : res]  =
 done.
 qed.
 
+
 module ArraySample = {
    proc sL() = { 
        var r,rho,k;
        r <$ IdealHSF.dR (); 
-       rho <- Array32.init (fun (i : int) => r.[i]); 
-       k <- Array32.init (fun (i : int) => r.[i+32]); 
+       rho <- Array32.init (fun (i : int) => r.`1.[i]); 
+       k <- Array32.init (fun (i : int) => r.`2.[i]); 
        return (rho,k);
   }
 
@@ -737,11 +785,32 @@ module ArraySample = {
   }
 }.
 
+
 require import DProd.
 clone  ProdSampling with
   type t1 <- W8.t Array32.t,
   type t2 <- W8.t Array32.t.
-  
+
+lemma srand_fu : is_full srand.
+rewrite /darray32 /is_full => x. 
+rewrite supp_dmap.
+exists (to_list x).
+rewrite to_listK /=.
+rewrite supp_dlist 1:/# size_to_list /= allP => *. 
+by rewrite dword_fu.
+qed.
+
+lemma arrsample :
+  equiv [ ArraySample.sL ~ ArraySample.sR : true ==> ={res} ].
+proc;wp;rndsem {2} 0;auto => />. 
+have <- : dlet srand (fun (rho : W8.t Array32.t) => dmap srand (fun (k : W8.t Array32.t) => (rho, k)))  = (IdealHSF.dR ()).
++ by rewrite /dR /dmap dprod_dlet;congr;apply fun_ext => *;congr;rewrite /(\o) /=. 
+move => ?rl?;split => *;last by split;rewrite tP => *;rewrite initiE /#.
+rewrite supp_dlet /=;exists rl.`1;split => *;1: apply srand_fu.
+rewrite supp_dmap /=;exists rl.`2;split => *; last by smt().
+by apply srand_fu. 
+qed.
+
 lemma KyberS_KyberIdeal &m :
   Pr [ KyberPKE.CPA(O,KyberS(DummyHS(IdealHSF.RF),S,KNS,KPRF,KPRF),As).main() @ &m : res] =
   Pr [ KyberPKE.CPA(O,KyberSIdeal(DummyHS(IdealHSF.RF),S,KNS,KPRF,KPRF),As).main() @ &m : res].
@@ -762,16 +831,18 @@ proc.
   rcondt{1} 6; 1: by move => *; auto => />;smt(@SmtMap).
   seq {1} 5 2 : (true); 1: by auto.
   wp.
-  conseq (_: _ ==> rho{2} = Array32.init (fun i => r{1}.[i]) /\ 
-                   k{2} = Array32.init (fun i => r{1}.[i+32])).
-   by move=> /> &1 *; rewrite SmtMap.get_set_sameE /=.
-  transitivity {1} { r <@ Sample_64_2x32.sample(); }
-   (true ==> ={r}) (true ==> rho{2} = Array32.init (fun i =>  r{1}.[i]) /\ k{2} = Array32.init (fun i =>  r{1}.[i+32])) => //.
-   by inline*; auto.
-  transitivity {2} { (rho, k) <@ Sample_64_2x32.sample2(); }
-   (true ==> rho{2} = Array32.init (fun i =>  r{1}.[i]) /\ k{2} = Array32.init (fun i =>  r{1}.[i+32])) (true ==> ={rho,k})=> //.
-   by call sample_64_2x32_eq.
-  by inline*; auto.
+  conseq (_: _ ==> rho{2} = Array32.init (fun i => r{1}.`1.[i]) /\ 
+                   k{2} = Array32.init (fun i => r{1}.`2.[i])); first
+   by move=> /> &1 *; rewrite SmtMap.get_set_sameE /=;split;rewrite tP => *;rewrite initiE /#.
+ 
+  transitivity {1} { r <@ ArraySample.sL(); }
+   (true ==> ={r}) (true ==> rho{2} = Array32.init (fun i =>  r{1}.`1.[i]) /\ k{2} = Array32.init (fun i =>  r{1}.`2.[i])) => //; first
+   by inline*; auto => /> &1 ? [rl1 rl2] /= => *;split;rewrite tP => *;rewrite initiE /#.
+   
+  transitivity {2} { (rho, k) <@ ArraySample.sR(); }
+   (true ==> rho{2} = Array32.init (fun i =>  r{1}.`1.[i]) /\ k{2} = Array32.init (fun i =>  r{1}.`2.[i])) (true ==> ={rho,k})=> //.
+   call arrsample; 1: by auto => />  *;split;rewrite tP => *;rewrite initiE /#.
+   by inline*; auto => /> &1 ? [rl1 rl2] /= => *;split;rewrite tP => *;rewrite initiE /#.
 qed.
 
 
@@ -903,13 +974,13 @@ module KyberSI(S : Sampler, O : SMP_RO) =
    KyberSIdeal(DummyHS(IdealHSF.RF),S,KNS,DummyPRF1(IdealPRF1.RF),DummyPRF2(IdealPRF2.RF), O).
 
 module (NTTSampler(S : Sampler) : Sampler) (O : SMP_RO) = {
-    proc sampleA(sd : W8.t Array32.t) : matrix = { 
+    proc sampleA(sd : W8.t Array32.t) : polymat = { 
         var a;
         a <@ S(O).sampleA(sd);
         return invnttm a;
     }
 
-    proc sampleAT(sd : W8.t Array32.t) : matrix = { 
+    proc sampleAT(sd : W8.t Array32.t) : polymat = { 
         var a;
         a <@ S(O).sampleAT(sd);
         return invnttm a;
@@ -994,7 +1065,7 @@ transitivity {1}
            forall (x:W8.t), SmtMap.dom IdealPRF1.RF.m{2} x => W8.to_uint x < _N{2}).
   inline*; wp.
   while (={i} /\ 0 <= i{2} <= kvec /\ _N{2}=i{2} /\
-         (forall k, 0 <= k < i{2} => v{1}.[k]=noise1{2}.[k]) /\
+         (forall k, 0 <= k < i{2} => (v{1}.[k]=noise1{2}.[k])%PolyVec) /\
          forall (x:W8.t), SmtMap.dom IdealPRF1.RF.m{2} x => W8.to_uint x < _N{2}).
    rcondt {2} 6.
     move=> &m; wp; skip => &hr /> ??? Hm ?.
@@ -1011,7 +1082,7 @@ transitivity {1}
     case: (k= 2*i0{2}+1) => E2.
      by rewrite set_eqiE 1..2:/# set_eqiE /#.
     by rewrite set_neqiE 1..2:/# set_neqiE 1..2:/# set_neqiE 1..2:/# set_neqiE /#.
-   wp; rnd; wp; skip => /> &1 &2 ?????????; split.
+   wp; rnd; wp; skip => /> &1 &2; rewrite !setvE !getvE => ?????????; split.
     split.
      by rewrite SmtMap.get_set_sameE.
     move=> x; case: (x=W8.of_int i{2}) => E.
@@ -1026,13 +1097,13 @@ transitivity {1}
     by rewrite /set E !offunvE /= /#.
    by rewrite /set !offunvE /= 1..2:/# (eq_sym _ k) E /= /#.
   auto => /> &1 &2; split; first smt().
-  move=> v1 m i v2 ??????; split; last smt().
-  by apply eq_polyvecP => k kb /#.
+  move=> v1 m i v2 => ??????; split; last smt().
+  apply eq_vectorP => k kb;smt(setvE getvE).
  wp; seq 2 2: (e{1}=noise2{2} /\ s{1}=noise1{2} /\ _N{2} = 6 /\
            forall (x:W8.t), SmtMap.dom IdealPRF1.RF.m{2} x => W8.to_uint x < _N{2}).
   inline*; wp.
   while (={i} /\ 0 <= i{2} <= kvec /\ _N{2}=3+i{2} /\ s{1}=noise1{2} /\
-         (forall k, 0 <= k < i{2} => v{1}.[k]=noise2{2}.[k]) /\
+         (forall k, 0 <= k < i{2} => (v{1}.[k]=noise2{2}.[k])%PolyVec) /\
          forall (x:W8.t), SmtMap.dom IdealPRF1.RF.m{2} x => W8.to_uint x < _N{2}).
    rcondt {2} 6.
     move=> &m; wp; skip => &hr /> ??? Hm ?.
@@ -1049,7 +1120,7 @@ transitivity {1}
     case: (k= 2*i1{2}+1) => E2.
      by rewrite set_eqiE 1..2:/# set_eqiE /#.
     by rewrite set_neqiE 1..2:/# set_neqiE 1..2:/# set_neqiE 1..2:/# set_neqiE /#.
-   wp; rnd; wp; skip => /> &1 &2 ?????????; split.
+   wp; rnd; wp; skip => /> &1 &2; rewrite !getvE !setvE => ?????????; split.
     split.
      by rewrite SmtMap.get_set_sameE.
     move=> x; case: (x=W8.of_int (3+i{2})) => E.
@@ -1066,10 +1137,10 @@ transitivity {1}
    by rewrite /set !offunvE /= 1..2:/# (eq_sym _ k) E /= /#.
   auto => /> &1 &2; split; first smt().
   move=> v1 m i v2 ??????; split; last smt().
-  by apply eq_polyvecP => k kb /#.
+  by apply eq_vectorP => k kb;smt(setvE getvE).
  by auto.
-auto => /> &1 &2 e s; rewrite /pk_encode /sk_encode /=.
-by rewrite comm_nttv_add comm_nttv_mmul.
+auto => /> &1 &2 e s; rewrite /pk_encode /sk_encode /= polyvecD.
+by rewrite -!polyvecD comm_nttv_add comm_nttv_mmul.
 qed.
 
 
@@ -1110,7 +1181,7 @@ seq 3 5 : (#pre /\ ={e1,e2} /\ r{1} = rv{2}).
  seq 1 2: (r{1}=noise1{2} /\ ={pk, m, glob S, glob O} /\ _N{2} = 3 /\ forall (x:W8.t), SmtMap.dom RF.m{2} x => W8.to_uint x < _N{2}).
   inline*; wp.
   while (={i, pk, m, glob S, glob O} /\ 0 <= i{2} <= kvec /\ _N{2}=i{2} /\
-         (forall k, 0 <= k < i{2} => v0{1}.[k]=noise1{2}.[k]) /\
+         (forall k, 0 <= k < i{2} => (v0{1}.[k]=noise1{2}.[k])%PolyVec) /\
          forall (x:W8.t), SmtMap.dom RF.m{2} x => W8.to_uint x < _N{2}).
    rcondt {2} 6.
     move=> &m; wp; skip => &hr /> ??? Hm ?.
@@ -1127,7 +1198,7 @@ seq 3 5 : (#pre /\ ={e1,e2} /\ r{1} = rv{2}).
     case: (k= 2*i0{2}+1) => E2.
      by rewrite set_eqiE 1..2:/# set_eqiE /#.
     by rewrite set_neqiE 1..2:/# set_neqiE 1..2:/# set_neqiE 1..2:/# set_neqiE /#.
-   wp; rnd; wp; skip => /> &1 &2 ?????????; split.
+   wp; rnd; wp; skip => /> &1 &2; rewrite !setvE !getvE => ?????????; split.
     split.
      by rewrite SmtMap.get_set_sameE.
     move=> x; case: (x=W8.of_int i{2}) => E.
@@ -1143,11 +1214,11 @@ seq 3 5 : (#pre /\ ={e1,e2} /\ r{1} = rv{2}).
    by rewrite /set !offunvE /= 1..2:/# (eq_sym _ k) E /= /#.
   auto => /> &1 &2; split; first smt().
   move=> v1 m i v2 ??????; split; last smt().
-  by apply eq_polyvecP => k kb /#.
+  by apply eq_vectorP => k kb;smt(setvE getvE).
  seq 1 2: (e1{1}=noise2{2} /\ r{1}=noise1{2} /\ ={pk, m, glob S, glob O} /\ _N{2} = 6 /\ forall (x:W8.t), SmtMap.dom RF.m{2} x => W8.to_uint x < _N{2}).
   inline*; wp.
   while (={i, pk, m, glob S, glob O} /\ 0 <= i{2} <= kvec /\ _N{2}=3+i{2} /\ r{1}=noise1{2} /\
-         (forall k, 0 <= k < i{2} => v0{1}.[k]=noise2{2}.[k]) /\
+         (forall k, 0 <= k < i{2} => (v0{1}.[k]=noise2{2}.[k])%PolyVec) /\
          forall (x:W8.t), SmtMap.dom RF.m{2} x => W8.to_uint x < _N{2}).
    rcondt {2} 6.
     move=> &m; wp; skip => &hr /> ??? Hm ?.
@@ -1164,7 +1235,7 @@ seq 3 5 : (#pre /\ ={e1,e2} /\ r{1} = rv{2}).
     case: (k= 2*i1{2}+1) => E2.
      by rewrite set_eqiE 1..2:/# set_eqiE /#.
     by rewrite set_neqiE 1..2:/# set_neqiE 1..2:/# set_neqiE 1..2:/# set_neqiE /#.
-   wp; rnd; wp; skip => /> &1 &2 ?????????; split.
+   wp; rnd; wp; skip => /> &1 &2; rewrite !setvE !getvE => ?????????; split.
     split.
      by rewrite SmtMap.get_set_sameE.
     move=> x; case: (x=W8.of_int (3+i{2})) => E.
@@ -1181,7 +1252,7 @@ seq 3 5 : (#pre /\ ={e1,e2} /\ r{1} = rv{2}).
    by rewrite /set !offunvE /= 1..2:/# (eq_sym _ k) E /= /#.
   auto => /> &1 &2; split; first smt().
   move=> v1 m i v2 ??????; split; last smt().
-  by apply eq_polyvecP => k kb /#.
+  by apply eq_vectorP => k kb;smt(setvE getvE).
  seq 1 12: (e2{1}=e20{2} /\ e1{1}=noise2{2} /\ r{1}=noise1{2} /\ ={pk, m, glob S, glob O}).
   inline*; wp.
   rcondt {2} 6.
@@ -1211,7 +1282,7 @@ seq 4 4 : (#pre /\ tv{2} = pk{1}.`1 /\ t{1} = (pk_decode pk{2}).`1 /\ nttm _A{1}
  by auto => />; smt(nttmK).
 wp;ecall{2}(sem_decode12_vec (tv{2})).
 auto => /> &1 &2; rewrite /pk_decode /c_encode /m_encode /=.  
-split; 1: by rewrite -comm_nttv_mmul invnttvK.
+split; 1: by rewrite -!polyvecD -comm_nttv_mmul invnttvK.
 congr. congr. congr. congr.
 by rewrite comm_ntt_dotp sem_decode12_vec_corr.
 by rewrite sem_decode1_corr.
@@ -1279,10 +1350,8 @@ end section.
 
 section.
 
-
-
 declare module O <: RO {-IdealPRF2.RF,-PRF_.PRF,-HSF.PRF,-IdealHSF.RF,-IdealPRF1.RF,-RF,-KPRF, -B1ROM, -B2ROM}.
-declare module XOF <: XOF_t {-IdealPRF2.RF,-PRF_.PRF,-HSF.PRF,-IdealHSF.RF,-IdealPRF1.RF,-RF,-KPRF, -O, -B1ROM, -B2ROM}.
+declare module XOF <: XOF_RO_t {-IdealPRF2.RF,-PRF_.PRF,-HSF.PRF,-IdealHSF.RF,-IdealPRF1.RF,-RF,-KPRF, -O, -B1ROM, -B2ROM}.
 declare module As <: KyberPKE.Adversary {-IdealPRF2.RF,-PRF_.PRF,-HSF.PRF,-IdealHSF.RF,-IdealPRF1.RF,-RF,-O, -XOF, -KPRF, -B1ROM, -B2ROM}.
 
 (* This theorem yields security for any sampler and we can use
@@ -1297,15 +1366,15 @@ lemma security_spec &m :
   (forall (O0 <: SMP_RO), islossless O0.get => islossless XOF(O0).init) =>
   (forall (O0 <: SMP_RO), islossless O0.get => islossless XOF(O0).next_bytes) =>
 
-   (forall (O0 <: SMP_RO) (XOF0 <: XOF_t), 
+   (forall (O0 <: SMP_RO) (XOF0 <: XOF_RO_t), 
          islossless O0.get => 
          islossless XOF0(O0).next_bytes => 
-         islossless Parse(XOF0,O0).sample) =>
+         islossless Parse(XOF0(O0)).sample) =>
 
   (forall (O0 <: SMP_RO), islossless O0.get => islossless As(O0).guess) =>
   (forall (O0 <: SMP_RO), islossless O0.get => islossless As(O0).choose) =>
 
-  Pr[ KyberPKE.CPA(O,Kyber(KHS,XOF,KPRF),As).main() @ &m : res] - 1%r/2%r = 
+  Pr[ KyberPKE.CPA(O,KyberS(KHS,KSampler(XOF),KNS,KPRF,KPRF),As).main() @ &m : res] - 1%r/2%r = 
   (Pr [ HS_DEFS.IND(HSF.PRF,D_ES(KSampler(XOF),O,As)).main() @ &m : res ] - 
   Pr [ HS_DEFS.IND(IdealHSF.RF,D_ES(KSampler(XOF),O,As)).main() @ &m : res ]) +
   (Pr [ PRF_DEFS.IND(PRF_.PRF,D_PRF1(KSampler(XOF),O,As)).main() @ &m : res ] - 
@@ -1317,7 +1386,10 @@ lemma security_spec &m :
  Pr[MLWE_SMP(B2ROM(As,  NTTSampler(KSampler(XOF))),  NTTSampler(KSampler(XOF)), O).main(true, false) @ &m : res] -
  Pr[MLWE_SMP(B2ROM(As,  NTTSampler(KSampler(XOF))),  NTTSampler(KSampler(XOF)), O).main(true, true) @ &m : res]).
 move => Oill Ooll XOF_init_ll XOF_next_ll Parse_ll Asgll Ascll.
-have <- : Pr[ KyberPKE.CPA(O,KyberS(KHS,KSampler(XOF),KNS,KPRF,KPRF),As).main() @ &m : res]= 
+
+(* 
+  WE LOST CONNECTION TO THE SPEC IN THE ROM BECAUSE THE TYPE OF THE XOF DOES NOT TAKE AN RO.
+  have <- : Pr[ KyberPKE.CPA(O,KyberS(KHS,KSampler(XOF),KNS,KPRF,KPRF),As).main() @ &m : res]= 
           Pr[ KyberPKE.CPA(O,Kyber(KHS,XOF,KPRF),As).main() @ &m : res].
 + byequiv => //.
   proc.
@@ -1326,7 +1398,7 @@ have <- : Pr[ KyberPKE.CPA(O,KyberS(KHS,KSampler(XOF),KNS,KPRF,KPRF),As).main() 
   rnd.
   wp; call(_: ={glob O, glob XOF}); 1: by sim.
   call (kg_sampler_kg O XOF).
-  by call(_: true); auto => />. 
+  by call(_: true); auto => />. *)
 
 have <- := (security_any_sampler O (KSampler(XOF)) As &m Oill Ooll  _ _ Asgll Ascll).
   + by move => O O_ll; apply (KSamplerA_ll XOF O O_ll XOF_init_ll XOF_next_ll Parse_ll).
@@ -1424,7 +1496,7 @@ end section.
 section.
 
 declare module As <: KyberPKE.Adversary {-IdealPRF2.RF,-PRF_.PRF,-HSF.PRF,-IdealHSF.RF,-IdealPRF1.RF,-LRO, -RO_H.RO, -RO_H.FRO, -RO_H.LRO, -RO_SMP.LRO, -KPRF, -B1ROM, -B2ROM, -B,-Bt, -BS, -D}.
-declare module XOF <: XOF_t {-IdealPRF2.RF,-PRF_.PRF,-HSF.PRF,-IdealHSF.RF,-IdealPRF1.RF,-As, -B1ROM, -B2ROM, -LRO, -RO_H.RO, -RO_H.FRO, -RO_H.LRO, -RO_SMP.LRO, -B,-Bt, -BS, -D}.
+declare module XOF <: XOF_RO_t {-IdealPRF2.RF,-PRF_.PRF,-HSF.PRF,-IdealHSF.RF,-IdealPRF1.RF,-As, -B1ROM, -B2ROM, -LRO, -RO_H.RO, -RO_H.FRO, -RO_H.LRO, -RO_SMP.LRO, -B,-Bt, -BS, -D}.
 declare module Sim <: Simulator_t {-IdealPRF2.RF,-PRF_.PRF,-HSF.PRF,-IdealHSF.RF,-IdealPRF1.RF,-XOF,-As,-B1ROM, -B2ROM, -LRO, -RO_H.RO, -RO_H.FRO, -RO_H.LRO, -RO_SMP.LRO, -B,-Bt, -BS, -D}.
 
 lemma security_spec_indiff &m epsilon:
@@ -1435,10 +1507,10 @@ lemma security_spec_indiff &m epsilon:
   (forall (O0 <: SMP_RO), islossless O0.get => islossless XOF(O0).init) =>
   (forall (O0 <: SMP_RO), islossless O0.get => islossless XOF(O0).next_bytes) =>
 
-   (forall (O0 <: SMP_RO) (XOF0 <: XOF_t), 
+   (forall (O0 <: SMP_RO) (XOF0 <: XOF_RO_t), 
          islossless O0.get => 
          islossless XOF0(O0).next_bytes => 
-         islossless Parse(XOF0,O0).sample) =>
+         islossless Parse(XOF0(O0)).sample) =>
 
   (forall (O0 <: SMP_RO), islossless O0.get => islossless As(O0).guess) =>
   (forall (O0 <: SMP_RO), islossless O0.get => islossless As(O0).choose) =>
@@ -1448,7 +1520,7 @@ lemma security_spec_indiff &m epsilon:
         Pr[ WIndfIdeal(D0,Sim,RO_H.LRO).main(tr,b) @ &m : res] | <= epsilon) =>
 
 
-  `| Pr[ KyberPKE.CPA(LRO,Kyber(KHS,XOF,KPRF),As).main() @ &m : res] - 1%r/2%r | <= 
+  `| Pr[ KyberPKE.CPA(LRO,KyberS(KHS,KSampler(XOF),KNS,KPRF,KPRF),As).main() @ &m : res] - 1%r/2%r | <= 
   `| Pr [ HS_DEFS.IND(HSF.PRF,D_ES(KSampler(XOF),LRO,As)).main() @ &m : res ] - 
       Pr [ HS_DEFS.IND(IdealHSF.RF,D_ES(KSampler(XOF),LRO,As)).main() @ &m : res ] | +
   `| Pr [ PRF_DEFS.IND(PRF_.PRF,D_PRF1(KSampler(XOF),LRO,As)).main() @ &m : res ] - 
@@ -1461,6 +1533,9 @@ lemma security_spec_indiff &m epsilon:
        Pr[MLWE(Bt(BS(B2ROM(As,NTTSampler(KSampler(XOF))),Sim),RO_H.LRO)).main(true) @ &m : res] | + 4%r * epsilon.
 
 move => eps_ge0 Oill XOF_init_ll XOF_next_ll Parse_ll Asgll Ascll ind.
+(* 
+  WE LOST CONNECTION TO THE SPEC IN THE ROM BECAUSE THE TYPE OF THE XOF DOES NOT TAKE AN RO.
+
 have <- : Pr[ KyberPKE.CPA(LRO,KyberS(KHS,KSampler(XOF),KNS,KPRF,KPRF),As).main() @ &m : res]= 
           Pr[ KyberPKE.CPA(LRO,Kyber(KHS,XOF,KPRF),As).main() @ &m : res].
 + byequiv => //.
@@ -1471,7 +1546,7 @@ have <- : Pr[ KyberPKE.CPA(LRO,KyberS(KHS,KSampler(XOF),KNS,KPRF,KPRF),As).main(
   wp; call(_: ={glob LRO, glob XOF}); 1: by sim.
   call (kg_sampler_kg LRO XOF).
   by inline *; auto.
-
+*)
 + have  := (security_any_sampler_indiff  As (KSampler(XOF)) Sim  &m epsilon eps_ge0 Oill _ _ Asgll Ascll ind).
   + by move => O O_ll; apply (KSamplerA_ll XOF O O_ll XOF_init_ll XOF_next_ll Parse_ll).
   by move => O O_ll; apply (KSamplerAT_ll XOF O O_ll XOF_init_ll XOF_next_ll Parse_ll).
@@ -1636,17 +1711,18 @@ proc.
   rcondt{1} 6; 1: by move => *; auto => />;smt(@SmtMap).
   seq {1} 5 2 : (true); 1: by auto.
   wp.
-  conseq (_: _ ==> rho{2} = Array32.init (fun i => r{1}.[i]) /\ 
-                   k{2} = Array32.init (fun i => r{1}.[i+32]));
-  1: by move => /> [#] &1 r; 
-       rewrite !SmtMap.get_set_sameE !oget_some.
-  transitivity {1} { r <@ Sample_64_2x32.sample(); }
-   (true ==> ={r}) (true ==> rho{2} = Array32.init (fun i =>  r{1}.[i]) /\ k{2} = Array32.init (fun i =>  r{1}.[i+32])) => //.
-   by inline*; auto.
-  transitivity {2} { (rho, k) <@ Sample_64_2x32.sample2(); }
-   (true ==> rho{2} = Array32.init (fun i =>  r{1}.[i]) /\ k{2} = Array32.init (fun i =>  r{1}.[i+32])) (true ==> ={rho,k})=> //.
-   by call sample_64_2x32_eq.
-  by inline*; auto.
+  conseq (_: _ ==> rho{2} = Array32.init (fun i => (r{1}.`1.[i])%PolyVec) /\ 
+                   k{2} = Array32.init (fun i => (r{1}.`2.[i])%PolyVec)).
+  move => /> [#] &1 r; 
+       rewrite !SmtMap.get_set_sameE !oget_some;smt(Array32.tP setvE getvE Array32.initiE).
+  transitivity {1} { r <@ ArraySample.sL(); }
+   (true ==> ={r}) (true ==> rho{2} = Array32.init (fun i =>  r{1}.`1.[i]) /\ k{2} = Array32.init (fun i =>  r{1}.`2.[i])) => //; first
+   by inline*; auto => /> &1 ? [rl1 rl2] /= => *;split;rewrite tP => *;rewrite initiE /#.
+   
+  transitivity {2} { (rho, k) <@ ArraySample.sR(); }
+   (true ==> rho{2} = Array32.init (fun i =>  r{1}.`1.[i]) /\ k{2} = Array32.init (fun i =>  r{1}.`2.[i])) (true ==> ={rho,k})=> //.
+   call arrsample; 1: by auto => />  *;split;rewrite tP => *;rewrite initiE /#.
+   by inline*; auto => /> &1 ? [rl1 rl2] /= => *;split;rewrite tP => *;rewrite initiE /#.
 qed.
 
 lemma PRFHop1C &m :
@@ -1772,7 +1848,7 @@ section.
 
 
 declare module A <: CORR_ADV {-HSF.PRF, -PRF_.PRF, -B1ROM, -B2ROM, -KPRF, -RF,-IdealHSF.RF, -IdealPRF1.RF, -LRO,-RO_H.LRO,-RO_SMP.RO, -RO_SMP.LRO, -CB}.
-declare module XOF <: XOF_t {-HSF.PRF, -PRF_.PRF, -B1ROM, -B2ROM, -KPRF, -RF,-IdealHSF.RF, -IdealPRF1.RF, -A,-LRO,-RO_H.LRO,-RO_SMP.RO, -RO_SMP.LRO, -CB}.
+declare module XOF <: XOF_RO_t {-HSF.PRF, -PRF_.PRF, -B1ROM, -B2ROM, -KPRF, -RF,-IdealHSF.RF, -IdealPRF1.RF, -A,-LRO,-RO_H.LRO,-RO_SMP.RO, -RO_SMP.LRO, -CB}.
 declare module Sim <: Simulator_t {-HSF.PRF, -PRF_.PRF, -B1ROM, -B2ROM, -KPRF, -RF,-IdealHSF.RF, -IdealPRF1.RF, -XOF, -A,-LRO,-RO_H.LRO,-RO_SMP.RO, -RO_SMP.LRO, -CB}.
 
 
@@ -1783,14 +1859,17 @@ lemma correctness_spec &m cu_bound failprob1 failprob2 epsilon  :
   (forall (O <: Ideal_RO), islossless O.get => islossless Sim(O).get) =>
   (forall (O <: SMP_RO), islossless O.get => islossless A(O).find) =>
 
-  (forall trb (D0 <: Distinguisher_t {-KSampler(XOF),-Sim, -RO_H.RO, -RO_H.LRO, -RO_SMP.RO, -RO_SMP.LRO}),
-    `| Pr[ WIndfReal(D0,NTTSampler(KSampler(XOF)),RO_SMP.LRO).main(trb) @ &m : res] -
-       Pr[ WIndfIdeal(D0,Sim,RO_H.LRO).main(trb) @ &m : res] | <= epsilon) =>
+  (forall (trb : bool * bool)
+    (D0 <: Distinguisher_t{ -RO_H.RO, -RO_H.LRO, -RO_SMP.RO, -RO_SMP.LRO, -Sim, -KSampler(XOF), -NTTSampler(KSampler(XOF))}),
+    `|Pr[WIndfReal(D0, NTTSampler(KSampler(XOF)), RO_SMP.LRO).main(trb) @ &m :
+         res] -
+      Pr[WIndfIdeal(D0, Sim, RO_H.LRO).main(trb) @ &m : res]| <=
+    epsilon) =>
 
   Pr[ CB1.main(cu_bound, cv_bound_max) @ &m : res] <= failprob1 =>
   Pr[ CB2.main(cu_bound) @ &m : res] <= failprob2 =>
 
-  Pr[ KyberPKE.Correctness_Adv(LRO,Kyber(KHS,XOF,KPRF),A).main() @ &m : res]  <=
+  Pr[ KyberPKE.Correctness_Adv(LRO,KyberS(KHS, KSampler(XOF), KNS,KPRF,KPRF),A).main() @ &m : res]  <=
     `|Pr[MLWE(Bcb2).main(false) @ &m : res] -
           Pr[MLWE(Bcb2).main(true) @ &m : res]| + failprob1 + failprob2 + epsilon +
   (`|Pr [ HS_DEFS.IND(HSF.PRF,DC_ES(KSampler(XOF),LRO,A)).main() @ &m : res ] - 
@@ -1800,6 +1879,8 @@ lemma correctness_spec &m cu_bound failprob1 failprob2 epsilon  :
   (`|Pr [ PRF_DEFS.IND(PRF_.PRF,DC_PRF2(KSampler(XOF),LRO,A)).main() @ &m : res ] - 
   Pr [ PRF_DEFS.IND(IdealPRF2.RF,DC_PRF2(KSampler(XOF),LRO,A)).main() @ &m : res ]|).
 move => meminit Sim_i_ll Sim_h_ll A_ll ind fp1 fp2.
+(*  
+  We lost connection to the spec in the rom
 have <-: Pr[Correctness_Adv(LRO,KyberS(KHS, KSampler(XOF), KNS,KPRF,KPRF), A).main() @ &m : res] = 
          Pr[Correctness_Adv(LRO,Kyber(KHS, XOF, KPRF), A).main() @ &m : res].
 + byequiv => //.
@@ -1809,6 +1890,7 @@ have <-: Pr[Correctness_Adv(LRO,KyberS(KHS, KSampler(XOF), KNS,KPRF,KPRF), A).ma
   wp; call(_: ={glob LRO}); 1: by sim.
   call (kg_sampler_kg LRO XOF).
   by inline *; auto.
+*)
 
 move : (correctness_any_sampler A (KSampler(XOF)) Sim &m cu_bound failprob1 failprob2 epsilon meminit Sim_i_ll Sim_h_ll A_ll ind fp1 fp2).
 
@@ -1826,4 +1908,4 @@ qed.
 
 end section.
 
-end SpecProperties.
+

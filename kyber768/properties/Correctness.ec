@@ -933,7 +933,7 @@ clone PRF as PRF_DEFS with
 clone import PRF_DEFS.PseudoRF as PRF_ with
   type K <- W8.t Array32.t, 
   op dK <- srand,
-  op F <- SHAKE256_33_128.
+  op F <- Symmetric.PRF.
 
 module KPRF = PRF_.PseudoRF.
 
