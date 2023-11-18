@@ -10,35 +10,6 @@ require import KyberLib DistrExtra.
 require import GFq Rq Symmetric Sampling VecMat  Serialization InnerPKE Kyber.
 import Zq.
 
-(* require import Fastexp.
-
-clone include Fastexp with
-  type CR.t <- coeff,
-  op CR.zeror <- Zq.zero,
-  op CR.oner <- Zq.one,
-  op CR.(+) <- Zq.(+),
-  op CR.([ - ]) <- Zq.([-]),
-  op CR.( * ) <- Zq.( * ),
-  op CR.invr  <- Zq.inv,
-  op CR.exp  <- Zq.exp,
-  op CR.ofint <- ZqField.ofint,
-  pred CR.unit  <- Zq.unit
-proof *.
-
-realize CR.addrA by apply Zq.ZqRing.addrA.
-realize CR.addrC by apply Zq.ZqRing.addrC.
-realize CR.add0r by apply Zq.ZqRing.add0r.
-realize CR.addNr by apply Zq.ZqRing.addNr.
-realize CR.oner_neq0 by apply Zq.ZqRing.oner_neq0.
-realize CR.mulrA by apply Zq.ZqRing.mulrA.
-realize CR.mulrC by apply Zq.ZqRing.mulrC.
-realize CR.mul1r by apply Zq.ZqRing.mul1r.
-realize CR.mulrDl by apply Zq.ZqRing.mulrDl.
-realize CR.mulVr by apply Zq.ZqRing.mulVr.
-realize CR.unitP by apply Zq.ZqRing.unitP.
-realize CR.unitout by apply Zq.ZqRing.unitout.
-*)
-
 (* Signed representation: could go in coeff *)
 
 lemma as_sintK x:
