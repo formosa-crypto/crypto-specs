@@ -7,7 +7,7 @@ require import Array256 Array384 Array128 Array32 Array960 Array768 Array1152.
 (*---*) import RField RealOrder IntOrder IntID.
 
 require import KyberLib DistrExtra.
-require import GFq Rq Symmetric Sampling VecMat  Serialization InnerPKE Kyber.
+require import GFq Rq Symmetric Sampling VecMat  Serialization InnerPKE MLKEM.
 import Zq.
 
 (* Signed representation: could go in coeff *)
