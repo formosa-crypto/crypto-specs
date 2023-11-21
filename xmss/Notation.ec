@@ -3,18 +3,23 @@ from Jasmin require import JModel.
 
 type byte = W8.t.
 
+(* prefix of big endian byte representation of a 32-bit word *)
+op toByte(x : W32.t, k : int) : byte list =  
+     take k (rev (to_list (W4u8.unpack8 x))).
+
+(* the range of indices into a wots chain *)
 op w : { int | w = 4 \/ w = 16} as w_vals.
 
 module BaseW = {
-  proc base_w(_X : byte list, out_len : int) : W8.t list = {
+  proc base_w(_X : byte list, out_len : int) : int list = {
        var _in : int <- 0;
        var out : int <- 0;
        var total : W8.t <- W8.of_int 0;
        var bits : int <- 0;
        var consumed : int <- 0;
-       var basew : W8.t list;
+       var basew : int list;
 
-       basew <- nseq out_len (W8.of_int 0);
+       basew <- nseq out_len 0;
 
        while (consumed < out_len) {
            if (bits = 0) {
@@ -24,8 +29,9 @@ module BaseW = {
            }
            bits <- bits - floor (log2 w%r);
            basew <- put basew out 
+             (W8.to_uint
                ((total `>>` W8.of_int bits) 
-                          `&` W8.of_int (w - 1));
+                          `&` W8.of_int (w - 1)));
            out <- out + 1;
            consumed <- consumed + 1;
        }
@@ -59,6 +65,9 @@ pred base_w_post(_X : W8.t list, out_len :int,
 *)
 
 type adrs = W32.t Array8.t.
+
+op setChainAddress(_ADRS : adrs, chainadrs : int) =
+   _ADRS.[5 <- W32.of_int chainadrs].
 
 op setHashAddress(_ADRS : adrs, hashadrs : int) =
    _ADRS.[6 <- W32.of_int hashadrs].

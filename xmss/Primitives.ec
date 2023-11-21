@@ -10,6 +10,8 @@ op len1 = ceil (8%r * n%r / log2 w%r).
 op len2 = floor (log2 (len1 * (w - 1))%r / log2 w%r) + 1.
 op len = len1 + len2.
 
+lemma ge0_len : 0 <= len by admit.
+
 clone import Subtype as NBytes with 
    type T = W8.t list,
    op P = fun l => size l = n
@@ -65,7 +67,7 @@ axiom chainS _x i s _SEED _ADRS:
       let _ADRS = setKeyAndMask _ADRS 1 in
       let _BM = prf _SEED _ADRS in
       let tmp = f _KEY (nbytexor tmp _BM) in
-           tmp.
+          tmp.
 
 lemma chain_ll : islossless Chain.chain
   by proc;while(true) (s - chcount); by auto => /#.
