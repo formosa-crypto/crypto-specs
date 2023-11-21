@@ -47,7 +47,7 @@ module Kyber = {
     m              <@ InnerPKE.dec(skp,cph);
     (_Kt,r)        <- G_mhpk m hpk;
     c              <@ InnerPKE.enc_derand(pk,m,r);
-    hc             <- H_ct c;
+    hc             <- H_ct cph;
     if (c = cph) {
       _K <- KDF _Kt hc;
     }
