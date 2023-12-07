@@ -828,7 +828,7 @@ equiv rsamplelist_upto:
  ={max,n} /\ 0 <= max{2} < 2^k{2} ==> ={res}.
 proof.
 proc; simplify.
-exlim n{1} => N; elim/natind: N => [|N HN IH].
+exlim n{1} => N; elim/natind: N => [|N HN iH].
  move=> n H0.
  rnd {1}.
  rcondf {2} 4.
@@ -887,7 +887,7 @@ transitivity {1} { l <@ LS.SampleCons.sample([0..max],n); }
   + by move=> /> &m *; exists k{m} max{m} N; auto.
   + done.
   + seq 1 3: (#pre /\ r{1}=y{2}).
-     clear IH.
+     clear iH.
      transitivity {1} { r <@ RejSampling.sample_upto(max); }
       ( N = n{1} /\ ={max, n} 
        ==> N = n{1} /\ ={r,max,n}  )
@@ -912,6 +912,7 @@ transitivity {1} { l <@ LS.SampleCons.sample([0..max],n); }
       by wp; rnd; auto; smt(). 
      wp; skip; smt().
   inline*; wp; simplify.
+  weakmem {1} iH (n0  : int, r : int,rs : int list, d : int distr) => IH.
   conseq IH; 1,2: by smt().
   + splitwhile {2} 4 : (j < 1).
     wp.

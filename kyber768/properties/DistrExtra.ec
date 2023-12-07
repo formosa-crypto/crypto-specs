@@ -224,7 +224,8 @@ case: (0 <= x1 && x1 < 2 ^ k1) => Hx1.
   split; first smt(@IntOrder).
   move=>_; rewrite exprD_nneg 1..2:/#.
   have ->: 2 ^ k1 * 2 ^ k2 = 2 ^ k2 * 2 ^ k1 by smt().
-  have ?: x2 * 2 ^ k1 < 2 ^ k2 * 2 ^ k1 by smt(@IntOrder).
+  have ?: x2 * 2 ^ k1 < 2 ^ k2 * 2 ^ k1.
+  apply ltr_pmul2r; 1,2: smt(expr_gt0).
   have  : x2 * 2 ^ k1 + 1*2^k1 <= 2 ^ k2 * 2 ^ k1; last by smt().
   by rewrite -Ring.IntID.mulrDl /#.
  split; 1: by smt().
@@ -827,7 +828,7 @@ equiv rsamplelist_upto:
  ={max,n} /\ 0 <= max{2} < 2^k{2} ==> ={res}.
 proof.
 proc; simplify.
-exlim n{1} => N; elim/natind: N => [|N HN IH].
+exlim n{1} => N; elim/natind: N => [|N HN iH].
  move=> n H0.
  rnd {1}.
  rcondf {2} 4.
@@ -886,7 +887,7 @@ transitivity {1} { l <@ LS.SampleCons.sample([0..max],n); }
   + by move=> /> &m *; exists k{m} max{m} N; auto.
   + done.
   + seq 1 3: (#pre /\ r{1}=y{2}).
-     clear IH.
+     clear iH.
      transitivity {1} { r <@ RejSampling.sample_upto(max); }
       ( N = n{1} /\ ={max, n} 
        ==> N = n{1} /\ ={r,max,n}  )
@@ -910,8 +911,9 @@ transitivity {1} { l <@ LS.SampleCons.sample([0..max],n); }
      while (#pre).
       by wp; rnd; auto; smt(). 
      wp; skip; smt().
-    inline*; wp; simplify.
-    by conseq IH.
+  inline*; wp; simplify.
+  weakmem {1} iH (n0  : int, r : int,rs : int list, d : int distr) => IH.
+  conseq IH; 1,2: by smt().
   + splitwhile {2} 4 : (j < 1).
     wp.
     while (j{1}+1=j{2} /\ #pre /\ y{1}::l{1} = l{2}).

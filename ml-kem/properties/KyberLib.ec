@@ -63,7 +63,12 @@ lemma frac0_dvdz (m n: int):
  frac (m%r / n%r) = 0%r <=> n %| m.
 proof. 
 move=> ygt0; rewrite dvdzE modz_floor // /frac. 
-by split; rewrite -divz_floor /#. 
+split; rewrite -divz_floor; 1,3:smt(). 
++ move => H; have -> : n * (m %/ n) = m; last by ring.
+  rewrite mulrC -eq_fromint fromintM.
+  by have ->: (m %/ n)%r  = m%r / n%r; smt().
+move => H.
+by have -> : m = n * (m %/ n); smt().
 qed.
 
 lemma from_int_frac n: frac n%r = 0%r
@@ -93,7 +98,9 @@ split => H.
  by rewrite -E dvdzE /#.
 have : m%r = (m %/ n)%r * n%r + (m %% n)%r by smt(divz_eq).
 rewrite H /= => ->.
-rewrite /frac; smt(floorE).
+rewrite /frac.
+have -> : ((m %/ n)%r * n%r / n%r) = (m %/ n)%r by smt().
+by smt(floorE). 
 qed.
 
 lemma frac_inv_gt1 x: 1%r < x => frac (inv x) = inv x.
