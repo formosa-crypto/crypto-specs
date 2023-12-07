@@ -4,7 +4,7 @@ from Jasmin require import JModel.
 require import Array25 Array32 Array64 Array128 Array168 Array256 Array960 Array1152.
 
 (* XXX: Writing input type as "product" is probably terrible for domain separation checking *)
-op SHA3_256_1130_32 : W8.t Array32.t -> (W8.t Array960.t * W8.t Array128.t) -> W8.t Array32.t.
+op SHA3_256_1120_32 : W8.t Array32.t -> (W8.t Array960.t * W8.t Array128.t) -> W8.t Array32.t.
 (* XXX: same here *)
 op SHA3_256_1184_32 : W8.t Array1152.t * W8.t Array32.t -> W8.t Array32.t.
 
@@ -24,7 +24,7 @@ op G_mhpk  = SHA3_512_64_64.
 
 op H_pk  = SHA3_256_1184_32.
 
-op J = SHA3_256_1130_32.
+op J = SHA3_256_1120_32.
 
 op PRF = SHAKE256_33_128.
 

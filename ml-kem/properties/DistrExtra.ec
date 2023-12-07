@@ -224,7 +224,8 @@ case: (0 <= x1 && x1 < 2 ^ k1) => Hx1.
   split; first smt(@IntOrder).
   move=>_; rewrite exprD_nneg 1..2:/#.
   have ->: 2 ^ k1 * 2 ^ k2 = 2 ^ k2 * 2 ^ k1 by smt().
-  have ?: x2 * 2 ^ k1 < 2 ^ k2 * 2 ^ k1 by smt(@IntOrder).
+  have ?: x2 * 2 ^ k1 < 2 ^ k2 * 2 ^ k1.
+  apply ltr_pmul2r; 1,2: smt(expr_gt0).
   have  : x2 * 2 ^ k1 + 1*2^k1 <= 2 ^ k2 * 2 ^ k1; last by smt().
   by rewrite -Ring.IntID.mulrDl /#.
  split; 1: by smt().
@@ -910,8 +911,8 @@ transitivity {1} { l <@ LS.SampleCons.sample([0..max],n); }
      while (#pre).
       by wp; rnd; auto; smt(). 
      wp; skip; smt().
-    inline*; wp; simplify.
-    by conseq IH.
+  inline*; wp; simplify.
+  conseq IH; 1,2: by smt().
   + splitwhile {2} 4 : (j < 1).
     wp.
     while (j{1}+1=j{2} /\ #pre /\ y{1}::l{1} = l{2}).
