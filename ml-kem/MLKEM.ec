@@ -19,7 +19,7 @@ type ciphertext = InnerPKE.ciphertext.
 type sharedsecret = W8.t Array32.t.
 
 import InnerPKE.
-module Kyber = {
+module MLKEM = {
 
   proc kg_derand(coins: W8.t Array32.t * W8.t Array32.t) : publickey * secretkey = {
     var kgs,z,pk,sk,hpk;
