@@ -199,6 +199,24 @@ op RAWSHAKE128 (m: bytes, outlen8:int): bytes =
 op RAWSHAKE256 (m: bytes, outlen8:int): bytes =
  KECCAK1600 136 m RAWSHAKE_DS_BYTE outlen8.
 
+(* For XOFs, it is also convenient to have access to absorb/squeeze *)
+op SHAKE128_ABSORB m = ABSORB1600 168 m SHAKE_DS_BYTE.
+op SHAKE128_SQUEEZE_BLOCK st = 
+ let st' = keccak_f1600_op st in (st', statesqueeze st' 168).
+
+op SHAKE256_ABSORB m = ABSORB1600 136 m SHAKE_DS_BYTE.
+op SHAKE256_SQUEEZE_BLOCK st = 
+ let st' = keccak_f1600_op st in (st', statesqueeze st' 138).
+
+op RAWSHAKE128_ABSORB m = ABSORB1600 168 m RAWSHAKE_DS_BYTE.
+op RAWSHAKE128_SQUEEZE_BLOCK st = 
+ let st' = keccak_f1600_op st in (st', statesqueeze st' 168).
+
+op RAWSHAKE256_ABSORB m = ABSORB1600 136 m RAWSHAKE_DS_BYTE.
+op RAWSHAKE256_SQUEEZE_BLOCK st = 
+ let st' = keccak_f1600_op st in (st', statesqueeze st' 138).
+
+(* TODO: relate SHAKE128 with SHAKE128_ABSORB and SHAKE128_SQUEZZE_BLOCK, etc. *)
 
 (**************************************************************
      Correctness wrt bit-oriented functional specification

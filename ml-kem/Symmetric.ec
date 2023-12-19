@@ -1,8 +1,35 @@
 (* General EC imports *)
-require import AllCore.
+require import AllCore List.
 from Jasmin require import JModel.
 require import Array25 Array32 Array64 Array128 Array168 Array256 Array960 Array1152.
 
+(*
+from FIPS202 require import Keccak1600_Spec.
+
+op SHA3_256_1120_32 (x: W8.t Array32.t, y: W8.t Array960.t * W8.t Array128.t): W8.t Array32.t =
+ Array32.of_list W8.zero (SHA3_256 (to_list x ++ to_list y.`1 ++ to_list y.`2)).
+
+op SHA3_256_1184_32 (x: W8.t Array1152.t * W8.t Array32.t): W8.t Array32.t =
+ Array32.of_list W8.zero (SHA3_256 (to_list x.`1 ++ to_list x.`2)).
+
+op SHA3_512_32_64 (x: W8.t Array32.t): W8.t Array32.t * W8.t Array32.t =
+ let l = SHA3_512 (to_list x)
+ in (Array32.of_list W8.zero (take 32 l), Array32.of_list W8.zero (drop 32 l)).
+
+op SHA3_512_64_64 (x y: W8.t Array32.t): W8.t Array32.t * W8.t Array32.t =
+ let l = SHA3_512 (to_list x ++ to_list y)
+ in (Array32.of_list W8.zero (take 32 l), Array32.of_list W8.zero (drop 32 l)).
+ 
+op SHAKE128_ABSORB_34 (x: W8.t Array32.t) (i j: W8.t): W64.t Array25.t =
+ SHAKE128_ABSORB (to_list x ++ [i; j]).
+op SHAKE128_SQUEEZE_168 (st: W64.t Array25.t): W64.t Array25.t *  W8.t Array168.t =
+ let (st', l) = SHAKE128_SQUEEZE_BLOCK st in (st', Array168.of_list W8.zero l).
+
+op SHAKE256_64_32 (x y: W8.t Array32.t): W8.t Array32.t =
+ Array32.of_list W8.zero (SHAKE256 (to_list x ++ to_list y) 32).
+op SHAKE256_33_128 (x: W8.t Array32.t, tag: W8.t): W8.t Array128.t =
+ Array128.of_list W8.zero (SHAKE256 (to_list x ++ [tag]) 128).
+*)
 (* XXX: Writing input type as "product" is probably terrible for domain separation checking *)
 op SHA3_256_1120_32 : W8.t Array32.t -> (W8.t Array960.t * W8.t Array128.t) -> W8.t Array32.t.
 (* XXX: same here *)
@@ -18,6 +45,7 @@ op SHAKE128_SQUEEZE_168 : W64.t Array25.t -> W64.t Array25.t *  W8.t Array168.t.
 (* XXX: same here *)
 op SHAKE256_64_32 : W8.t Array32.t -> W8.t Array32.t -> W8.t Array32.t.
 op SHAKE256_33_128 : W8.t Array32.t -> W8.t ->  W8.t Array128.t.
+
 
 op G_coins = SHA3_512_32_64.
 op G_mhpk  = SHA3_512_64_64.
