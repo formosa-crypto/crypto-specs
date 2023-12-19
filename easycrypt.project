@@ -1,0 +1,12 @@
+[general]
+timeout = 30
+
+provers = Alt-Ergo@2.4
+provers = CVC4@1.8
+provers = Z3@4.8
+
+rdirs = common
+idirs = fips202
+idirs = fips202/properties
+idirs = ml-kem
+idirs = ml-kem/properties
