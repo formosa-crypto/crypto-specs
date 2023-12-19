@@ -8,74 +8,14 @@ require import AllCore List Int IntDiv.
 require StdOrder.
 import StdOrder.IntOrder.
 
+require import EclibExtra.
+
 require import FIPS202_Keccakf1600.
 
+require import Array5 Array24.
 
-(* MOVE TO JWord??? *)
-lemma W64_rol0 (w: W64.t):
- w `|<<<|` 0 = w.
-proof.
-apply W64.ext_eq => i Hi.
-by rewrite rolE /= !initiE //= /#.
-qed.
 
-lemma W8_to_uint_set (w:W8.t) i b:
- 0 <= i < 8 =>
- to_uint w.[i <- b]
- = to_uint w + (b2i b - b2i w.[i]) * 2^i.
-proof.
-(* proof by evaluation 
-move=> Hi.
-rewrite !to_uint_bits /bits /mkseq -iotaredE /=.
-rewrite  /bs2int /big /range -iotaredE /predT /=.
-have: (i \in iota_ 0 8) by smt(mem_iota).
-by move: {Hi} i; rewrite -allP -iotaredE /= /#.
-*)
-(* proof avoiding evaluation... *)
-move=> Hi; rewrite !to_uint_bits /bs2int.
-have L: forall w, W8.bits w 0 W8.size = w2bits w.
- by rewrite /bits /w2bits /#.
-rewrite !L.
-rewrite (StdBigop.Bigint.BIA.bigD1_cond _ _ _ i) //. 
-  by rewrite size_w2bits mem_range.
- by apply range_uniq.
-rewrite addrC eq_sym.
-rewrite (StdBigop.Bigint.BIA.bigD1_cond _ _ _ i) //=. 
-  by rewrite mem_range.
- by apply range_uniq.
-rewrite -addrA addrC -addrA; congr.
-apply StdBigop.Bigint.BIA.eq_bigr. 
- move => k; rewrite /predI /predT /predC1 /= => Hk.
- by rewrite get_setE //= Hk //=.
-by rewrite get_setE //=; ring.
-qed.
-
-lemma W64_to_uint_set (w:W64.t) i b:
- 0 <= i < 64 =>
- to_uint w.[i <- b]
- = to_uint w + (b2i b - b2i w.[i]) * 2^i.
-proof.
-(* proof avoiding evaluation... *)
-move=> Hi; rewrite !to_uint_bits /bs2int.
-have L: forall w, W64.bits w 0 W64.size = w2bits w.
- by rewrite /bits /w2bits /#.
-rewrite !L.
-rewrite (StdBigop.Bigint.BIA.bigD1_cond _ _ _ i) //. 
-  by rewrite size_w2bits mem_range.
- by apply range_uniq.
-rewrite addrC eq_sym.
-rewrite (StdBigop.Bigint.BIA.bigD1_cond _ _ _ i) //=. 
-  by rewrite mem_range.
- by apply range_uniq.
-rewrite -addrA addrC -addrA; congr.
-apply StdBigop.Bigint.BIA.eq_bigr. 
- move => k; rewrite /predI /predT /predC1 /= => Hk.
- by rewrite get_setE //= Hk //=.
-by rewrite get_setE //=; ring.
-qed.
-
-(* end MOVE *)
-
+(* State-matrix indexes *)
 lemma idx_bnd x y:
  0 <= idx(x,y) < 25.
 proof. by rewrite /idx /= /#. qed.

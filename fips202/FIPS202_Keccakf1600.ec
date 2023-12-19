@@ -10,7 +10,10 @@ require import AllCore List Int IntDiv.
 
 from Jasmin require export JWord JUtils.
 
-(*from JazzCommon*) require export JWordList Array5 Array24 Array25.
+require export JWordList.
+
+(*from JExtr*) require import Array5 Array24.
+(*from JExtr*) require export Array25.
 
 
 (** Section 3.1 - State

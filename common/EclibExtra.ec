@@ -1,45 +1,6 @@
 (* Miscellaneous results on some constructions from the EC and Jasmin libraries *)
 require import Core Int IntDiv List.
-require BitEncoding.
-import BitEncoding.BitChunking.
 
-from Jasmin require JUtils.
-
-lemma foldl_map ['a 'b 'c] (h:'a->'b) (f:'c ->'b->'c) (z:'c) l:
- foldl f z (List.map h l) = foldl (fun b a => f b (h a)) z l.
-proof.
-elim: l f z => //= x xs IH f z.
-by rewrite IH.
-qed.
-
-lemma nth_inside ['a] d1 d2 (l: 'a list) i:
- 0 <= i < size l =>
- nth d1 l i = nth d2 l i.
-proof.
-elim: l i => /=; first smt().
-move=> x xs IH i Hi; case: (i=0) => E //.
-by rewrite IH /#.
-qed.
-
-lemma nth0 (d:'a) l: nth d l 0 = head d l by case: l.
-
-lemma take_take n1 n2 (l: 'a list):
- take n1 (take n2 l) = take (min n1 n2) l.
-proof. elim: l n1 n2 => //= x xs IH n1 n2; smt(). qed.
-
-lemma nth_nseq_dflt (d:'s) n i: nth d (nseq n d) i = d.
-proof.
-case: (0 <= i < n) => E; first by rewrite nth_nseq.
-rewrite nth_out // size_nseq /#.
-qed.
-
-lemma nseq_add ['a] (x:'a) n1 n2:
- 0 <= n1 => 0 <= n2 => nseq (n1+n2) x = nseq n1 x ++ nseq n2 x.
-proof.
-move=> Hn1 Hn2; elim/natind: n1 Hn1.
- by move=> n ??; rewrite (: n=0) 1:/# nseq0.
-by move=> n Hn IH H; rewrite nseqS // (addzC n) -addzA addzC nseqS 1:/# IH //.
-qed.
 
 lemma take_nseq ['a] n1 n2 (x: 'a):
  take n1 (nseq n2 x) = nseq (min n1 n2) x.
@@ -81,14 +42,16 @@ move=> ?; have ->/=: !(n<=0) by smt().
 by rewrite -IH /#.
 qed.
 
-lemma drop_drop ['a] (l: 'a list) n1 n2:
- 0 <= n1 => 0 <= n2 =>
- drop n1 (drop n2 l) = drop (n1+n2) l.
+lemma foldl_dropS ['a 'b] d i f (z:'b) (l: 'a list):
+ 0 <= i < size l =>
+ foldl f z (drop i l)
+= foldl f (f z (nth d l i)) (drop (i+1) l).
 proof.
-elim/natind: n1.
- by move=> n Hn; rewrite drop_le0 /#.
-move=> n Hn IH H1 H2.
-by rewrite dropS // IH // -dropS /#.
+move=> Hi; rewrite dropS 1:/#.
+rewrite -(head_behead (drop i _) d) /=. 
+ by rewrite -size_eq0 size_drop /#.
+apply eq_foldl => //.
+by rewrite -nth0_head nth_drop /#.
 qed.
 
 (* a variant of [size_take] that is more convenient in some cases *)
@@ -114,18 +77,24 @@ case: (n <= size s1) => H.
 by rewrite (: ! n < size s1) /#.
 qed.
 
-(* [eq_mkseq'] is a more refined version of [eq_mkseq] *)
-lemma eq_mkseq' ['a] (f g : int -> 'a) n:
-  (forall (x : int), 0 <= x < n => f x = g x) => mkseq f n = mkseq g n.
+(* likewise for [take_take] *)
+lemma take_take' n1 n2 (l: 'a list):
+ take n1 (take n2 l) = take (min n1 n2) l.
+proof. elim: l n1 n2 => //= x xs IH n1 n2; smt(). qed.
+
+(* likewise for [size_flatten] (uniform inner lists) *)
+lemma size_flatten' ['a] sz (ss: 'a list list):
+ (forall x, x\in ss => size x = sz) =>
+ size (flatten ss) = sz*size ss.
 proof.
-elim/natind: n f g => /=.
- by move=> n Hn f g H; rewrite !mkseq0_le.
-move=> n Hn IH f g H.
-rewrite !(addzC n) !mkseq_add //; congr.
- by rewrite !mkseq1 H /#.
-apply IH => x Hx /=.
-by rewrite H /#.
+move=> H; rewrite size_flatten.
+rewrite StdBigop.Bigint.sumzE.
+rewrite StdBigop.Bigint.BIA.big_map.
+rewrite -(StdBigop.Bigint.BIA.eq_big_seq (fun _ => sz)) /=.
+ by move=> x Hx; rewrite /(\o) /= H.
+by rewrite StdBigop.Bigint.big_constz count_predT.
 qed.
+
 
 lemma size_behead ['a] (l:'a list):
  size (behead l) = max 0 (size l - 1).
@@ -143,7 +112,8 @@ elim/natind: n => /=.
 by move=> n Hn IH; rewrite addzC mkseq_add // mkseq1.
 qed.
 
-lemma take_mkseq ['a] n (f: int -> 'a) k:
+(* slightly more general version *)
+lemma take_mkseq' ['a] n (f: int -> 'a) k:
  0 <= n => take n (mkseq f k) = mkseq f (min n k).
 proof.
 elim/natind: n => //=.
@@ -158,257 +128,47 @@ case: (n < k) => E.
 by rewrite lez_minr 1:/# take_oversize // size_mkseq /#.
 qed.
 
-lemma drop_mkseq ['a] n (f: int -> 'a) k:
- 0 <= n <= k => drop n (mkseq f k) = mkseq (fun i => f (i+n)) (k-n).
+lemma behead_take ['a] n (s: 'a list):
+ behead (take n s) = take (n-1) (behead s).
 proof.
-elim/natind: n => //=.
- move=> n Hn1 Hn2; have ->: n=0 by smt().
- by rewrite drop0.
-move => n Hn IH H.
-rewrite dropS // IH 1:/# behead_mkseq /= Ring.IntID.opprD addzA.
-by apply eq_mkseq => x /=; congr; ring.
+move: s=> [|x xs] //=.
+case: (n <= 0) => C //.
+by rewrite take_le0 /#.
 qed.
 
-lemma behead_chunk ['a] n (l:'a list):
- behead (chunk n l) = chunk n (drop n l).
-proof.
-case: (size l < n).
- move=> ?; rewrite drop_oversize 1:/#.
- rewrite /chunk behead_mkseq.
- rewrite divz_small /=; first smt(size_ge0).
- by rewrite mkseq0_le //= mkseq0.
-case: (0 < n); last first.
-rewrite -!lezNgt => ??.
- by rewrite drop_le0 // !chunk_le0.
-rewrite -lezNgt => ??.
-rewrite /chunk behead_mkseq /=.
-rewrite size_drop // 1:/# lez_maxr 1:/#.
-have ->: (size l - n) %/ n = size l %/ n - 1.
- have ->: size l = (size l - n) + 1*n by ring.
- by rewrite divzMDr /#.
-by apply eq_mkseq' => x Hx /=; rewrite drop_drop /#.
+lemma drop_take ['a] n1 n2 (bs: 'a list):
+ 0 <= n1 =>
+ drop n1 (take n2 bs)
+ = take (n2-n1) (drop n1 bs).
+elim/natind: n1 n2; first smt().
+move=> n Hn0 IH n2 Hn1.
+rewrite !dropS // IH // behead_take; congr.
+smt().
 qed.
 
-lemma drop_chunk n k (l: 'a list):
- 0 < k =>
- drop n (chunk k l) = chunk k (drop (k*n) l).
+(* a more general version *)
+lemma nth_map' ['a 'b] (da: 'a) (f: 'a -> 'b) (l: 'a list) db i:
+ f da = db =>
+ nth db (map f l) i = f (nth da l i).
 proof.
-move=> Hk; elim/natind: n l.
- by move=> n Hn l; rewrite !drop_le0 /#.
-move=> n Hn IH l; rewrite dropS // IH behead_chunk drop_drop 1,2:/#.
-by congr; congr; ring.
+move => Hf.
+case: (0 <= i && i < size l) => C.
+ by rewrite (nth_map da) //.
+by rewrite !nth_out; smt(size_map).
 qed.
 
-lemma chunk_take_eq ['a] n (l:'a list):
- 0 < n =>
- chunk n l = chunk n (take (size l %/ n * n) l).
+(* TO JUtils *)
+from Jasmin require import JUtils.
+lemma map2_nilr ['a, 'b, 'c] (f : 'a -> 'b -> 'c) l:
+ map2 f l [] = [].
 proof.
-move=> Hn; rewrite /chunk.
-have ->: (size (take (size l %/ n * n) l) %/ n) = (size l %/ n).
- rewrite size_take'; first smt(size_ge0).
- by rewrite lez_floor 1:/# /= mulzK 1:/#.
-apply eq_mkseq' => x Hx /=.
-rewrite -{1}(cat_take_drop (size l %/ n * n)).
-rewrite drop_cat size_take'; first smt(size_ge0).
-rewrite lez_floor 1:/# /= mulzC StdOrder.IntOrder.ltr_pmul2r 1:/#.
-move: (Hx); move=> [? ->] /=.
-have E: n <= size (drop (x * n) (take (size l %/ n * n) l)).
- rewrite size_drop 1:/# lez_maxr; last first.
-  rewrite size_take' 1:/# lez_floor 1:/# /= -Ring.IntID.mulrBl.
-  by rewrite -{1}mulz1 {1}mulzC StdOrder.IntOrder.ler_pmul2r // -ltzS /#.
- rewrite size_take' 1:/# lez_floor 1:/# /=.
- smt(size_ge0).
-by rewrite take_cat' E.
+rewrite -size_eq0 size_map2 /=; smt(size_ge0).
 qed.
 
-
-lemma divz_minus1 m d:
- 0 < d => 0 <= m => ! d %| m => (m-1) %/ d = m %/ d.
+lemma map2_nill ['a, 'b, 'c] (f : 'a -> 'b -> 'c) l:
+ map2 f [] l = [].
 proof.
-move=> Hd Hm Hdvd.
-rewrite {1}(divz_eq m d) -addzA divzMDl 1:/#; ring.
-rewrite divz_small //; apply JUtils.bound_abs; split.
- by move: Hdvd; rewrite dvdzE; smt(JUtils.modz_cmp).
-by move=> ?; smt(JUtils.modz_cmp).
-qed.
-
-op chunkfillsize (n sz:int) = (-sz)%%n.
-
-lemma chunkfillsize_cmp n sz:
- 0 < n => 0 <= chunkfillsize n sz < n.
-proof. move=> Hn; rewrite /chunkfillsize; smt(JUtils.modz_cmp). qed.
-
-lemma chunkfillsizeP n sz k:
- 0 < n => chunkfillsize n (n*k+sz) = chunkfillsize n sz.
-proof.
-move=> Hn; rewrite /chunkfillsize.
-by rewrite -modzNm mulzC modzMDl modzNm.
-qed.
-
-lemma chunkfillsizeE' n sz:
- 0 < n => 0 < sz => chunkfillsize n sz = n - 1 - (sz-1) %% n
-by move=> ??; rewrite /chunkfillsize modNz.
-
-lemma chunkfillsizeE n sz:
- 0 < n => 0 <= sz => chunkfillsize n sz = if n %| sz then 0 else n - sz%%n.
-proof.
-move=> Hn Hsz'.
-case: (n %| sz) .
- rewrite /chunkfillsize dvdzE -modzNm => ->; smt().
-move=> ?.
-have Hsz : 0 < sz by smt(dvdz0).
-rewrite chunkfillsizeE' //. 
-have ->: n - 1 - (sz - 1) %% n = n - (1 + (sz - 1) %% n) by ring.
-congr; congr.
-by rewrite !modzE divz_minus1 //; ring.
-qed.
-
-op chunkfill ['a] (d:'a) n l = l ++ nseq (chunkfillsize n (size l)) d.
-
-lemma chunkfill_nil ['a] (d:'a) n:
- chunkfill d n [] = [].
-proof. by rewrite /chunkfill /chunkfillsize nseq0. qed.
-
-hint simplify chunkfill_nil.
-
-lemma dvd_chunkfill ['a] (d:'a) n l:
- 0 < n => n %| size l => chunkfill d n l = l.
-proof.
-by move=> Hn Hsz; rewrite /chunkfill chunkfillsizeE // ?size_ge0 !Hsz /= nseq0 cats0.
-qed.
-
-lemma size_chunkfill ['a] (d:'a) n l:
- 0 < n =>
- size (chunkfill d n l) = (size l - 1) %/ n * n + n.
-proof.
-move=> Hn; rewrite /chunkfill size_cat size_nseq lez_maxr //.
- smt(chunkfillsize_cmp).
-case: (size l = 0) => E.
- by rewrite !E /= /chunkfillsize /= divNz //=; ring.
-rewrite chunkfillsizeE' //; first smt(size_ge0).
-have ->: size l + (n - 1 - (size l - 1) %% n) = (size l-1) + n - (size l-1) %% n
- by ring.
-by rewrite {1}(divz_eq (size l - 1) n); ring.
-qed.
-
-lemma chunkfillP ['a] (d:'a) n l:
- 0 < n =>
- n %| size (chunkfill d n l).
-proof.
-move=> Hn; rewrite size_chunkfill //.
-rewrite (: (size l - 1) %/ n * n + n = ((size l - 1) %/ n + 1) * n) 1:/#.
-by rewrite dvdzE modzMl.
-qed.
-
-lemma chunkfillK ['a] (d:'a) n l:
- 0 < n =>
- chunkfill d n (chunkfill d n l) = chunkfill d n l.
-proof.
-move=> Hn; rewrite {1}/chunkfill chunkfillsizeE // ?size_ge0.
-by rewrite !chunkfillP //= nseq0 cats0.
-qed.
-
-lemma chunkfill_cat (d:'a) n l1 l2:
- 0 < n => n %| size l1 => chunkfill d n (l1++l2) = l1 ++ chunkfill d n l2.
-proof.
-move=> H0 Hsz; rewrite /chunkfill -!catA; congr; congr; congr.
-move: Hsz; rewrite size_cat dvdzP => [[k]].
-rewrite mulzC => ->.
-by rewrite chunkfillsizeP.
-qed.
-
-lemma chunkfillK' l (d:'a) n:
- 0 < n => n %| size l => chunkfill d n l = l.
-proof.
-rewrite /chunkfill => Hn Hsz.
-move: (Hsz); rewrite dvdzP => [[k E]].
-by rewrite chunkfillsizeE // ifT 1:/# nseq0 cats0.
-qed.
-
-lemma chunkfillsize_ge0 k n: 0 < k => 0 <= chunkfillsize k n.
-proof.  by rewrite /chunkfillsize /#. qed.
-
-lemma drop_chunkfill n (d:'a) k l:
- 0 < k => 0 <= n =>
- drop (k*n) (chunkfill d k l) = chunkfill d k (drop (k*n) (chunkfill d k l)).
-proof.
-move=> Hk Hn; have := chunkfillP d k l Hk.
-rewrite /chunkfill size_cat size_nseq lez_maxr; first smt(chunkfillsize_ge0).
-move=> Hdvd; pose S:= chunkfillsize _ (size (drop _ _)).
-have ->: S = 0; last by rewrite nseq0 cats0.
-rewrite /S -(chunkfillsizeP _ _ n) // size_drop 1:/# addzC /max size_cat size_nseq. 
-rewrite lez_maxr; first by apply chunkfillsize_ge0.
-case: (0 < size l + chunkfillsize k (size l) - k * n) => E.
- rewrite Ring.IntID.subrK chunkfillsizeE; first 2 smt(size_ge0 chunkfillsize_ge0).
- by rewrite !Hdvd.
-by rewrite addzC chunkfillsizeP.
-qed.
-
-lemma nth_chunkfill k (d:'a) n l:
- 0 < n => nth d (chunkfill d n l) k = nth d l k.
-proof.
-move=> Hn; rewrite /chunkfill nth_cat.
-case: (k < size l) => E //.
-case: (0 <= k - size l < chunkfillsize n (size l)) => ?.
- by rewrite nth_nseq // nth_out /#.
-rewrite nth_out.
- by rewrite size_nseq lez_maxr // chunkfillsize_ge0. 
-by rewrite nth_out /#.
-qed.
-
-lemma size_chunkfilled (d:'a) k l:
- 0 < k =>
- size (BitEncoding.BitChunking.chunk k (chunkfill d k l))
- = (size l - 1) %/ k + 1.
-proof.
-move=> Hk; rewrite BitEncoding.BitChunking.size_chunk //.
-by rewrite size_chunkfill // divzMDl 1:/# divzz (:k<>0) 1:/#.
-qed.
-
-lemma head_chunkfilled (d:'a) k l:
- head [] (BitEncoding.BitChunking.chunk k (chunkfill d k l))
- = take k (chunkfill d k l).
-proof.
-case: (0 < k) => Hk; last first.
- by rewrite take_le0 1:/# BitEncoding.BitChunking.chunk_le0 1:/#.
-case: (0 < size l) => Hsz; last first.
- have ->: l=[] by smt(size_ge0).
- by rewrite chunkfill_nil /= /BitEncoding.BitChunking.chunk /= mkseq0.
-rewrite -nth0 /BitEncoding.BitChunking.chunk nth_mkseq /=.
- by rewrite size_chunkfill // /#.
-by rewrite drop0.
-qed.
-
-lemma nth_chunkfilled (d:'a) k l (i:int):
- 0 < k =>
- 0 <= i < (size l - 1) %/ k + 1 =>
- nth [] (BitEncoding.BitChunking.chunk k (chunkfill d k l)) i
- = take k (drop (k*i) (chunkfill d k l)).
-proof.
-move=> Hk Hi.
-rewrite {1}(:i = i+0) // -nth_drop 1,2:/# drop_chunk // nth0.
-by rewrite drop_chunkfill // 1:/# head_chunkfilled.
-qed.
-
-lemma nth_chunkfilled' dl (d:'a) k l (i:int):
- 0 < k =>
- 0 <= i < (size l - 1) %/ k + 1 =>
- nth dl (BitEncoding.BitChunking.chunk k (chunkfill d k l)) i
- = mkseq (fun j => nth d l (k*i+j)) k.
-proof.
-move=> Hk Hi.
-rewrite -(nth_inside []); first by rewrite size_chunkfilled.
-rewrite (nth_chunkfilled d k l i) //.
-have Hsz: size (take k (drop (k * i) (chunkfill d k l))) = k.
- rewrite size_take' 1:/# size_drop 1:/# size_chunkfill //.
- rewrite lez_maxr; first smt(size_ge0).
- have: k <= (size l - 1) %/ k * k + k - k * i.
-  by move: Hi => [?]; rewrite ltzE => [?] /#.
- smt().
-apply (eq_from_nth d); first by rewrite Hsz size_mkseq /#.
-rewrite Hsz => j Hj.
-rewrite nth_take 1,2:/# nth_drop 1,2:/# nth_chunkfill 1:/#.
-by rewrite nth_mkseq.
+rewrite -size_eq0 size_map2 /=; smt(size_ge0).
 qed.
 
 lemma take_map2 ['a 'b 'c] (f:'a -> 'b -> 'c) n l1 l2:
@@ -439,4 +199,196 @@ elim/natind: n l.
 move=> n Hn IH [|x xs] //=; first smt().
 by move=> Hsz H; rewrite nseqS //= H IH /#.
 qed.
+
+
+(* TO JWord *)
+from Jasmin require import JWord.
+import Ring.IntID.
+
+lemma W8_bits2w_nil:
+ W8.bits2w [] = W8.zero.
+proof. by apply W8.ext_eq => i Hi; rewrite /bits2w initiE //=. qed.
+
+(* slightly more general version of W8.bits2K *)
+lemma W8_bits2wK' l:
+ size l <= 8 =>
+ W8.w2bits (W8.bits2w l) = l ++ nseq (8 - size l) false.
+proof.
+move=> H; apply (eq_from_nth false).
+ by rewrite size_w2bits size_cat size_nseq; smt(size_ge0).
+move=> i; rewrite size_w2bits => Hi.
+rewrite get_w2bits get_bits2w 1:// nth_cat.
+case: (i < size l) => C //.
+case: ((i - size l) < (8 - size l)) => C2.
+ by rewrite !nth_nseq 1:/# nth_out /#.
+smt(nth_out).
+qed.
+
+lemma W8_bits2w_cat_nseq0 bs n:
+ W8.bits2w (bs ++ nseq n false)
+ = W8.bits2w bs.
+proof.
+apply W8.ext_eq => i Hi.
+rewrite /bits2w !initiE //= nth_cat.
+case: (i < size bs) => C //.
+rewrite !nth_nseq_if nth_out; smt(size_ge0).
+qed.
+
+lemma W64_bits2w_nil:
+ W64.bits2w [] = W64.zero.
+proof. by apply W64.ext_eq => i Hi; rewrite /bits2w initiE //=. qed.
+
+lemma W64_bits2w_nseq0 n:
+ W64.bits2w (nseq n false)
+ = W64.zero.
+proof.
+apply W64.ext_eq => i Hi.
+by rewrite /bits2w initiE //= nth_nseq_if /#.
+qed.
+
+lemma W64_bits2wK' l:
+ size l <= 64 =>
+ W64.w2bits (W64.bits2w l) = l ++ nseq (64 - size l) false.
+proof.
+move=> H; apply (eq_from_nth false).
+ by rewrite size_w2bits size_cat size_nseq; smt(size_ge0).
+move=> i; rewrite size_w2bits => Hi.
+rewrite get_w2bits get_bits2w 1:// nth_cat.
+case: (i < size l) => C //.
+case: ((i - size l) < (64 - size l)) => C2.
+ by rewrite !nth_nseq 1:/# nth_out /#.
+smt(nth_out).
+qed.
+
+lemma W64_bits2w_cat_nseq0 bs n:
+ W64.bits2w (bs ++ nseq n false)
+ = W64.bits2w bs.
+proof.
+apply W64.ext_eq => i Hi.
+rewrite /bits2w !initiE //= nth_cat.
+case: (i < size bs) => C //.
+rewrite !nth_nseq_if nth_out; smt(size_ge0).
+qed.
+
+lemma W8u8_to_listK w: pack8 (W8u8.to_list w) = w.
+proof.
+apply W64.ext_eq => k Hk.
+rewrite -(W8u8.unpack8K w); congr; congr.
+rewrite of_listE unpack8E; apply W8u8.Pack.all_eq_eq.
+by rewrite /all_eq /=.
+qed.
+
+lemma W8u8_to_list_pack8 l: 
+ size l <= 8 => W8u8.to_list (W8u8.pack8 l) = l ++ nseq (8-size l) W8.zero.
+proof.
+move=> Hl; apply (eq_from_nth W8.zero).
+ by rewrite /= size_cat size_nseq /#.
+move => i Hi; rewrite /= in Hi.
+have: (i \in iotared 0 8) by smt().
+move: {Hi} i; rewrite -allP /=.
+rewrite !W8u8.pack8bE // !get_of_list //.
+by rewrite !nth_cat; smt(nth_nseq nth_out).
+qed.
+
+lemma W8u8_pack8_nil: W8u8.pack8 [] = W64.zero.
+proof.
+apply W64.ext_eq => k Hk.
+by rewrite pack8E initiE //= get_of_list 1:/# /=.
+qed.
+
+lemma W8u8_to_listE (w: W64.t):
+ W8u8.to_list w = W8u8.Pack.to_list (unpack8 w).
+proof.
+by rewrite W8u8.unpack8E W8u8.Pack.to_listE /mkseq -iotaredE /=.
+qed.
+
+lemma W8u8_unpack8_inj: injective W8u8.unpack8.
+proof.
+move=> w1 w2.
+rewrite !unpack8E => E.
+apply W64.ext_eq => k Hk.
+rewrite !get_bits8 1..2://; congr.
+have /= <-:= W8u8.Pack.initiE (fun (i : int) => w1 \bits8 i) (k%/8) _.
+ smt().
+by rewrite E W8u8.Pack.initiE /#.
+qed.
+
+lemma W8u8_to_list_inj:
+ injective W8u8.to_list.
+proof.
+by move=> w1 w2; rewrite !W8u8_to_listE => /W8u8.Pack.to_list_inj /W8u8_unpack8_inj.
+qed.
+
+(*
+(** sets a specific byte of a 64-bit word *)
+op w64_set_u8 (w:W64.t, pos: int, x: W8.t): W64.t =
+ pack8_t (unpack8 w).[pos <- x].
+
+op w64_xor_u8 (w: W64.t, pos: int, x: W8.t): W64.t =
+ let w8u8 = unpack8 w in pack8_t w8u8.[pos <- w8u8.[pos] `^` x].
+*)
+
+lemma W64_rol0 (w: W64.t):
+ w `|<<<|` 0 = w.
+proof.
+apply W64.ext_eq => i Hi.
+by rewrite rolE /= !initiE //= /#.
+qed.
+
+lemma W8_to_uint_set (w:W8.t) i b:
+ 0 <= i < 8 =>
+ to_uint w.[i <- b]
+ = to_uint w + (b2i b - b2i w.[i]) * 2^i.
+proof.
+(* proof by evaluation 
+move=> Hi.
+rewrite !to_uint_bits /bits /mkseq -iotaredE /=.
+rewrite  /bs2int /big /range -iotaredE /predT /=.
+have: (i \in iota_ 0 8) by smt(mem_iota).
+by move: {Hi} i; rewrite -allP -iotaredE /= /#.
+*)
+(* proof avoiding evaluation... *)
+move=> Hi; rewrite !to_uint_bits /bs2int.
+have L: forall w, W8.bits w 0 W8.size = w2bits w.
+ by rewrite /bits /w2bits /#.
+rewrite !L.
+rewrite (StdBigop.Bigint.BIA.bigD1_cond _ _ _ i) //. 
+  by rewrite size_w2bits mem_range.
+ by apply range_uniq.
+rewrite addrC eq_sym.
+rewrite (StdBigop.Bigint.BIA.bigD1_cond _ _ _ i) //=. 
+  by rewrite mem_range.
+ by apply range_uniq.
+rewrite -addrA addrC -addrA; congr.
+apply StdBigop.Bigint.BIA.eq_bigr. 
+ move => k; rewrite /predI /predT /predC1 /= => Hk.
+ by rewrite get_setE //= Hk //=.
+by rewrite get_setE //=; ring.
+qed.
+
+lemma W64_to_uint_set (w:W64.t) i b:
+ 0 <= i < 64 =>
+ to_uint w.[i <- b]
+ = to_uint w + (b2i b - b2i w.[i]) * 2^i.
+proof.
+(* proof avoiding evaluation... *)
+move=> Hi; rewrite !to_uint_bits /bs2int.
+have L: forall w, W64.bits w 0 W64.size = w2bits w.
+ by rewrite /bits /w2bits /#.
+rewrite !L.
+rewrite (StdBigop.Bigint.BIA.bigD1_cond _ _ _ i) //. 
+  by rewrite size_w2bits mem_range.
+ by apply range_uniq.
+rewrite addrC eq_sym.
+rewrite (StdBigop.Bigint.BIA.bigD1_cond _ _ _ i) //=. 
+  by rewrite mem_range.
+ by apply range_uniq.
+rewrite -addrA addrC -addrA; congr.
+apply StdBigop.Bigint.BIA.eq_bigr. 
+ move => k; rewrite /predI /predT /predC1 /= => Hk.
+ by rewrite get_setE //= Hk //=.
+by rewrite get_setE //=; ring.
+qed.
+
+(* end JWord*)
 
