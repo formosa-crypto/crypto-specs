@@ -19,7 +19,7 @@ type ciphertext = InnerPKE.ciphertext.
 type sharedsecret = W8.t Array32.t.
 
 import InnerPKE.
-module Kyber = {
+module MLKEM = {
 
   proc kg_derand(coins: W8.t Array32.t * W8.t Array32.t) : publickey * secretkey = {
     var kgs,z,pk,sk,hpk;
@@ -31,28 +31,23 @@ module Kyber = {
   }
 
   proc enc_derand(pk : publickey, coins: W8.t Array32.t) : ciphertext * sharedsecret = {
-    var m,hpk,_Kt,r,c,hc,_K;
-    m       <- H_msg coins; 
+    var m,hpk,r,c,_K;
+    m       <- coins;
     hpk     <- H_pk pk;
-    (_Kt,r) <- G_mhpk m hpk;
+    (_K,r) <- G_mhpk m hpk;
     c       <@ InnerPKE.enc_derand(pk,m,r);
-    hc      <- H_ct c;
-    _K      <- KDF _Kt hc;
     return (c,_K);
   }
 
   proc dec(cph : ciphertext, sk : secretkey) : sharedsecret = {
-    var m,_Kt,r,skp,pk,hpk,z,c,hc,_K;
+    var m,_K',r,skp,pk,hpk,z,c,_K;
     (skp,pk,hpk,z) <- sk;
-    m              <@ InnerPKE.dec(skp,cph);
-    (_Kt,r)        <- G_mhpk m hpk;
-    c              <@ InnerPKE.enc_derand(pk,m,r);
-    hc             <- H_ct cph;
-    if (c = cph) {
-      _K <- KDF _Kt hc;
-    }
-    else {
-      _K <- KDF z hc;
+    m             <@ InnerPKE.dec(skp,cph);
+    (_K,r)        <- G_mhpk m hpk;
+    _K'           <- J z cph;
+    c             <@ InnerPKE.enc_derand(pk,m,r);
+    if (c <> cph) {
+      _K <- _K';
     }
     return _K;
   }
