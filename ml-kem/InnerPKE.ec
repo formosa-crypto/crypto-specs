@@ -3,7 +3,7 @@ require import AllCore.
 from Jasmin require import JWord.
 require import Array32 Array64 Array128 Array960 Array1152.
 
-(* Imports of "lower-level" Kyber spec parts *)
+(* Imports of "lower-level" MLKEM spec parts *)
 require import Rq.
 require import Symmetric.
 require import Sampling.

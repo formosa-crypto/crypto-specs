@@ -4,7 +4,7 @@ require import IntDiv.
 from Jasmin require import JWord.
 require import Array128 Array168 Array256.
 
-(* Imports of "lower-level" Kyber spec parts *)
+(* Imports of "lower-level" MLKEM spec parts *)
 require import GFq.
 import Zq.
 require import Rq.

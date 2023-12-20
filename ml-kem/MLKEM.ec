@@ -2,7 +2,7 @@
 from Jasmin require import JWord.
 require import Array32.
 
-(* Imports of "lower-level" Kyber spec parts *)
+(* Imports of "lower-level" MLKEM spec parts *)
 require import GFq.
 import Zq.
 require import Rq.

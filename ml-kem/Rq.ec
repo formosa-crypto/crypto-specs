@@ -50,7 +50,7 @@ a way that roughly matches what is described in the spec.
 
 Then we will have an NTT.ec file where we prove that 1) the imperative
 specs are equivalent to these operators and 2) that these operators have
-the properties we require to show that Kyber is correct up to some
+the properties we require to show that MLKEM is correct up to some
 decryption failure bound.
 
 *)

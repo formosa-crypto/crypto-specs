@@ -6,7 +6,7 @@ require import Array256 Array384 Array128 Array32 Array960 Array768 Array1152.
 (*---*) import BitEncoding BitChunking BS2Int.
 (*---*) import RField RealOrder IntOrder IntID.
 
-require import KyberLib DistrExtra.
+require import MLKEMLib DistrExtra.
 require import GFq Rq Symmetric Sampling VecMat  Serialization InnerPKE MLKEM.
 import Zq.
 
@@ -438,7 +438,7 @@ a way that roughly matches what is described in the spec.
 
 Then we will have an NTT.ec file where we prove that 1) the imperative
 specs are equivalent to these operators and 2) that these operators have
-the properties we require to show that Kyber is correct up to some
+the properties we require to show that MLKEM is correct up to some
 decryption failure bound.
 
 *)
@@ -845,7 +845,7 @@ op BytesToBits(bytes : W8.t list) : bool list = flatten (map W8.w2bits bytes).
 op decode(l : int, bits : bool list) = map bs2int (chunk l (take (256*l) bits)).
 op decode_vec(l : int, bits : bool list) = map bs2int (chunk l (take (768*l) bits)).
 
-(* Decode Operators as Defined in the Kyber Spec *)
+(* Decode Operators as Defined in the MLKEM Spec *)
 op sem_decode12(a : W8.t Array384.t) : ipoly =
    Array256.of_list 0 (decode 12 (BytesToBits (to_list a))).
 op sem_decode4(a : W8.t Array128.t) : ipoly = 
