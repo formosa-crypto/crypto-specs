@@ -4,7 +4,7 @@ from Jasmin require import JWord.
 require import Array32 Array128 Array256 Array384 Array768 Array960 Array1152.
 import BitEncoding BS2Int.
 
-(* Imports of "lower-level" Kyber spec parts *)
+(* Imports of "lower-level" MLKEM spec parts *)
 require import GFq.
 import Zq.
 require import Rq.

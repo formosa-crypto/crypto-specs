@@ -5,8 +5,8 @@ require import Array25 Array32 Array64 Array128 Array168 Array256 Array960 Array
 
 require import Keccak1600_Spec.
 
-op SHA3_256_1120_32 (x: W8.t Array32.t, y: W8.t Array960.t * W8.t Array128.t): W8.t Array32.t =
- Array32.of_list W8.zero (SHA3_256 (to_list x ++ to_list y.`1 ++ to_list y.`2)).
+op SHAKE_256_1120_32 (x: W8.t Array32.t, y: W8.t Array960.t * W8.t Array128.t): W8.t Array32.t =
+ Array32.of_list W8.zero (SHAKE256 (to_list x ++ to_list y.`1 ++ to_list y.`2) 32).
 
 op SHA3_256_1184_32 (x: W8.t Array1152.t * W8.t Array32.t): W8.t Array32.t =
  Array32.of_list W8.zero (SHA3_256 (to_list x.`1 ++ to_list x.`2)).
@@ -35,7 +35,7 @@ op G_mhpk  = SHA3_512_64_64.
 
 op H_pk  = SHA3_256_1184_32.
 
-op J = SHA3_256_1120_32.
+op J = SHAKE_256_1120_32.
 
 op PRF = SHAKE256_33_128.
 
