@@ -41,7 +41,7 @@ module CBD2 = {
     var i,j,a,b;
     var rr : poly;
     rr <- witness;
-    i <- 0; j <- 0;
+    j <- 0; i <- 0; 
     while (i < 128) {
       a <- b2i bytes.[i].[j %% 2 * 4 + 0] + b2i bytes.[i].[j %% 2 * 4 + 1];
       b <- b2i bytes.[i].[j %% 2 * 4 + 2] + b2i bytes.[i].[j %% 2 * 4 + 3];
@@ -56,3 +56,5 @@ module CBD2 = {
     return rr;
   }
 }.
+
+proc op cbd2sample = CBD2.sample. (* The functional lift *)
