@@ -1115,7 +1115,7 @@ lemma bytes2coefs_take l kk :
       0 <= kk <= 168 %/ 3 * 2 => 
       kk %%  2 = 0 =>
       size l = 168 => 
-       (bytes2coefs (take (kk %/ 2 * 3) l))  = take (kk %/ 2) (bytes2coefs l).
+       (bytes2coefs (take (kk %/ 2 * 3) l))  = take kk  (bytes2coefs l).
 proof. 
 move => H H0 H1.
 rewrite /bytes2coefs.
@@ -1127,22 +1127,34 @@ rewrite -{2}(cat_take_drop (kk %/2 * 3) (map W8.w2bits l)) flatten_cat chunk_cat
     by smt(W8.size_w2bits).
   by rewrite StdBigop.Bigint.big_constz count_predT;smt(size_take).
 case (kk = 0); 1: by move => -> /=; rewrite take0 flatten_nil drop0 take0 /chunk /= mkseq0.
+
 move => *.
-rewrite take_cat ifT. 
+rewrite take_cat ifF. 
 rewrite size_chunk 1:/# size_flatten.
 rewrite map_take -map_comp StdBigop.Bigint.sumzE. 
 have -> : (map (List.size \o W8.w2bits) l) = mkseq (fun _ => 8) (size l);
 last first. 
 + rewrite take_mkseq 1:/# mkseq_nseq big_nseq /=. 
-  have -> : (kk %/2 * 3) = count predT (iota_ 0 (kk %/2 *3)); 1: by smt(count_predT size_iota).
-  by rewrite -big_const StdBigop.Bigint.big_constz count_predT size_iota /#. 
+  have -> : (kk %/2 * 3) = count predT (iota_ 0 (kk %/2 *3)) by smt(count_predT size_iota).
+  rewrite -big_const StdBigop.Bigint.big_constz count_predT size_iota  1:/#. 
   have -> : (List.size \o W8.w2bits) = (fun (_ : W8.t) => 8) by rewrite /(\o) /=.
   clear H1; elim l => /=;1: by smt(mkseq0).
   move => l /= Hind;rewrite addrC mkseqSr 1:size_ge0 /=.
   by rewrite Hind /(\o).
 
-rewrite /chunk take_mkseq. admit.
-by have <- : kk %/ 2 = (size (flatten (take (kk %/ 2 * 3) (map W8.w2bits l))) %/ 12) by admit.
+have -> /= : size (chunk 12 (flatten (take (kk %/ 2 * 3) (map W8.w2bits l)))) = kk. 
+rewrite size_chunk 1:/# size_flatten.
+rewrite map_take -map_comp StdBigop.Bigint.sumzE. 
+have -> : (map (List.size \o W8.w2bits) l) = mkseq (fun _ => 8) (size l);
+last first. 
++ rewrite take_mkseq 1:/# mkseq_nseq big_nseq /=. 
+  have -> : (kk %/2 * 3) = count predT (iota_ 0 (kk %/2 *3)) by smt(count_predT size_iota).
+  rewrite -big_const StdBigop.Bigint.big_constz count_predT size_iota  1:/#. 
+  have -> : (List.size \o W8.w2bits) = (fun (_ : W8.t) => 8) by rewrite /(\o) /=.
+  clear H1; elim l => /=;1: by smt(mkseq0).
+  move => l /= Hind;rewrite addrC mkseqSr 1:size_ge0 /=.
+  by rewrite Hind /(\o).
+by rewrite take0 cats0.
 qed.
 
 lemma parse_sem_h _st : 
@@ -1221,14 +1233,55 @@ have <- : aa = (init
       size
         (filter (fun (c : int) => 0 <= c && c < q) (bytes2coefs (take k (to_list (SHAKE128_SQUEEZE_168 stcurr).`2))))).
   case (jcurr <= ii && ii < j); last by smt().
-  move => *; rewrite ifT 1:/#.
+  move => iib2; rewrite ifT 1:/#.
   rewrite H4;1: by smt().
-  congr. have /= := bytes2coefs_take (to_list (SHAKE128_SQUEEZE_168 stcurr).`2) (k %/ 3* 2) _  _ _. smt(). smt(). smt(Array168.size_to_list).
-  have -> : k %/ 3 * 2 %/ 2 * 3 = k by smt().
+  congr. 
+  move : iib2;rewrite /j.
+  have /= := bytes2coefs_take (to_list (SHAKE128_SQUEEZE_168 stcurr).`2) (k %/ 3* 2) _  _ _. smt(). smt(). smt(Array168.size_to_list).
+  have -> : k %/ 3 * 2 %/ 2 * 3 = k by smt().  
   move => ->. 
-  have -> : k %/ 3 * 2 %/ 2 = k %/ 3 by smt().
-  admit.
-admitted.
+  have -> :  (iter ncurr parsebody (witness, _st, 0)).`2 = stcurr. smt().
+  have -> : (iter ncurr parsebody (witness, _st, 0)).`3  = jcurr. smt().
+  move => iib2.
+  rewrite -{2}(cat_take_drop (k %/3 * 2) (bytes2coefs (to_list (SHAKE128_SQUEEZE_168 stcurr).`2))) filter_cat nth_cat  ifT; last by  done.
+  by smt().  
+
+(* LOOP BODY! *)
+auto => /> &hr ??????????; split; move => *; split; move => *; do split.
++ smt().
++ smt().
++ smt().
++ smt().
++ smt().
++ smt().
++ admit.
++ admit.
++ admit.
++ smt().
++ smt().
++ smt().
++ smt().
++ smt().
++ smt().
++ admit.
++ admit.
++ admit.
++ smt().
++ smt().
++ smt().
++ smt().
++ smt().
++ smt().
++ admit.
++ admit.
++ admit.
++ smt().
++ smt().
++ smt().
++ smt().
++ admit.
++ admit.
+qed.
 
 (* We know it terminates, but we need to prove it based on fullparse. *)
 lemma Parser_ll  _st: 
