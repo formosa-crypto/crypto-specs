@@ -1157,6 +1157,9 @@ last first.
 by rewrite take0 cats0.
 qed.
 
+lemma split_triple (a1 a2 : 'a) (b1 b2 : 'b) (c1 c2 : 'c) :
+      a1 = a2 => b1 = b2 => c1 = c2 => (a1,b1,c1) = (a2,b2,c2) by smt().
+
 lemma parse_sem_h _st : 
   (0 < count (fun (c : int) => 0 <= c && c < q) (bytes2coefs (take 168 (st2bytes _st)))) =>
   hoare [ Parse(XOF).sample : XOF.state = _st ==> 
@@ -1179,326 +1182,178 @@ while(XOF.state = (SHAKE128_SQUEEZE_168 stcurr).`1
         /\ (forall kk, jcurr <= kk < j => aa.[kk] = incoeff
               (nth witness (filter (fun (c : int) => 0 <= c && c < q) 
                  (bytes2coefs (take k (to_list (SHAKE128_SQUEEZE_168 stcurr).`2)))) (kk - jcurr)))); last first. 
-+ auto => /> *. split. 
-  + split; 1: by rewrite take0 /bytes2coefs /flatten /decode /chunk /= mkseq0 /= /#. 
-    by smt().
++ auto => /> *;split. 
+  + split; 1,2: by smt(take0 mkseq0). 
   move => aa k H H0 H1 ??? H2 H3 H4;split;1:smt().
-
-  rewrite iterS /= 1:/# /(parsebody (iter _ _ _)) /=.
+  rewrite iterS /= 1:/# /(parsebody (iter _ _ _)) /=. 
+   have sizele : size (filter (fun (c : int) => 0 <= c && c < q) (bytes2coefs (take k (to_list (SHAKE128_SQUEEZE_168 stcurr).`2)))) <= size (filter (fun (x : int) => 0 <= x && x < q) (bytes2coefs (to_list (SHAKE128_SQUEEZE_168 stcurr).`2))).
+   by rewrite !size_filter;apply count_subseq;apply subseq_coefs; smt(size_bytes2coefs Array168.size_to_list).
+ 
   case ((iter ncurr parsebody (witness, _st, 0)).`3 = 256); 1:by smt().
-  move => n256prev.
-  have <- : (SHAKE128_SQUEEZE_168 stcurr).`1 = 
-            (SHAKE128_SQUEEZE_168 (iter ncurr parsebody (witness, _st, 0)).`2).`1 by smt().
-
-  have <- : 
-    min 256
-   (jcurr +
-    size (filter (fun (c : int) => 0 <= c && c < q) (bytes2coefs (take k (to_list (SHAKE128_SQUEEZE_168 stcurr).`2))))) = 
-   min 256
-   ((iter ncurr parsebody (witness, _st, 0)).`3 +
-    size
-      (filter (fun (x : int) => 0 <= x && x < q)
-         (bytes2coefs (to_list (SHAKE128_SQUEEZE_168 (iter ncurr parsebody (witness, _st, 0)).`2).`2)))). 
- + have -> : (iter ncurr parsebody (witness, _st, 0)).`2 = stcurr by smt().
-   case (k = 168); 1:by smt(take_size Array168.size_to_list).
-   case ((jcurr +
-       size
-         (filter (fun (c : int) => 0 <= c && c < q) (bytes2coefs (take k (to_list (SHAKE128_SQUEEZE_168 stcurr).`2))))) < 256); 1: by smt(take_size Array168.size_to_list).
-   move => *.
-   have  : size (filter (fun (c : int) => 0 <= c && c < q) (bytes2coefs (take k (to_list (SHAKE128_SQUEEZE_168 stcurr).`2)))) <= size (filter (fun (x : int) => 0 <= x && x < q) (bytes2coefs (to_list (SHAKE128_SQUEEZE_168 stcurr).`2))); last by smt(). 
-   
-   have ? := size_bytes2coefs (to_list (SHAKE128_SQUEEZE_168 stcurr).`2) k _ _ _;1..3: smt(Array168.size_to_list). 
-   rewrite !size_filter.
-   by apply count_subseq;apply subseq_coefs; smt(Array168.size_to_list).
-
-have <- : aa = (init
-    (fun (i : int) =>
-       if (iter ncurr parsebody (witness, _st, 0)).`3 <= i &&
-          i <
-          min 256
-            (jcurr +
-             size
-               (filter (fun (c : int) => 0 <= c && c < q)
-                  (bytes2coefs (take k (to_list (SHAKE128_SQUEEZE_168 stcurr).`2))))) then
-         incoeff
-           (nth witness
-              (filter (fun (x : int) => 0 <= x && x < q)
-                 (bytes2coefs (to_list (SHAKE128_SQUEEZE_168 (iter ncurr parsebody (witness, _st, 0)).`2).`2)))
-              (i - (iter ncurr parsebody (witness, _st, 0)).`3))
-       else (iter ncurr parsebody (witness, _st, 0)).`1.[i]))%Array256; last by smt().
-+ apply Array256.tP => ii iib.
-  rewrite initiE //=.
-  pose j := min 256
-     (jcurr +
-      size
-        (filter (fun (c : int) => 0 <= c && c < q) (bytes2coefs (take k (to_list (SHAKE128_SQUEEZE_168 stcurr).`2))))).
-  case (jcurr <= ii && ii < j); last by smt().
-  move => iib2; rewrite ifT 1:/#.
-  rewrite H4;1: by smt().
+  move => n256prev; apply split_triple;2..:by smt(take_size Array168.size_to_list).
+  move => *;apply Array256.tP => ii iib;rewrite initiE //= eq_sym /= fun_if2 ifI; last by smt(take_size Array168.size_to_list).
+  move => [? iib2]; rewrite H4;1: by smt(take_size Array168.size_to_list). 
   congr. 
-  move : iib2;rewrite /j.
-  have /= := bytes2coefs_take (to_list (SHAKE128_SQUEEZE_168 stcurr).`2) (k %/ 3* 2) _  _ _. smt(). smt(). smt(Array168.size_to_list).
-  have -> : k %/ 3 * 2 %/ 2 * 3 = k by smt().  
-  move => ->. 
-  have -> :  (iter ncurr parsebody (witness, _st, 0)).`2 = stcurr. smt().
-  have -> : (iter ncurr parsebody (witness, _st, 0)).`3  = jcurr. smt().
-  move => iib2.
-  rewrite -{2}(cat_take_drop (k %/3 * 2) (bytes2coefs (to_list (SHAKE128_SQUEEZE_168 stcurr).`2))) filter_cat nth_cat  ifT; last by  done.
-  by smt().  
+  have /= b2cr := bytes2coefs_take (to_list (SHAKE128_SQUEEZE_168 stcurr).`2) (k %/ 3* 2) _  _ _;1..3:smt(Array168.size_to_list).
+  by rewrite -(cat_take_drop (k %/3 * 2) (bytes2coefs (to_list (SHAKE128_SQUEEZE_168 (iter ncurr parsebody (witness, _st, 0)).`2).`2))) filter_cat nth_cat  ifT; smt(size_filter take_size Array168.size_to_list size_bytes2coefs).
 
 (* LOOP BODY! *)
-auto => /> &hr ??????????; split; move => *; split; move => *; do split;1..6,10..15,19..24,28..31:by smt().  
-+ have -> : take (k{hr} + 3) (to_list (SHAKE128_SQUEEZE_168 stcurr).`2) =
-            (take (k{hr}) (to_list (SHAKE128_SQUEEZE_168 stcurr).`2)) ++ 
-            [(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}];(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}+1];(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}+2]].
-  + have -> : (k{hr} + 3) = (((k{hr}+1)+1)+1) by smt().
-    do 3!((rewrite (take_nth witness);1:smt(Array168.size_to_list))).
-    simplify. rewrite -!cats1. smt(@List).
-  rewrite /bytes2coefs map_cat flatten_cat chunk_cat. 
-  + rewrite size_flatten !map_take -map_comp -map_take StdBigop.Bigint.sumzE big_mapT. 
-  have -> : ((fun (x : int) => x) \o (List.size \o W8.w2bits)) = fun _ => 8
-    by smt(W8.size_w2bits).
-  by rewrite StdBigop.Bigint.big_constz count_predT;smt(size_take Array168.size_to_list).
-  rewrite map_cat filter_cat size_cat.
-  have : size
-      (filter (fun (c : int) => 0 <= c && c < q)
-         (map bs2int
-            (chunk 12
-               (flatten
-                  (map W8.w2bits
-                     [(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}]; (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1];
-                        (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]]))))) = 2; last by smt().
-  rewrite !map_cons /= /flatten /= /chunk /= map_mkseq /(\o) /= !size_cat !W8.size_w2bits /=.
-  have -> : 2 = 1+1 by auto.
-  rewrite !mkseqSr //= !cats0 /= /(\o) /= !mkseq1 /= !drop0.
-  have -> : bs2int (take 12
-           (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] ++
-            (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] ++ w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]))) = 
-       to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] +
-   256 * (to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %% 16); last first. 
-  have -> : bs2int
-          (take 12
-             (drop 12
-                (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] ++
-                 (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] ++
-                  w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2])))) =
-          to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %/ 16 +
-   16 * to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]; last first. 
-   rewrite ifT; 1: smt(W8.to_uint_cmp). 
-   rewrite ifT; 1: smt(W8.to_uint_cmp). 
-   by [].   
-   (* second coef *)
-   rewrite /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons. 
-   rewrite /to_uint  /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons /b2i /= !bs2int_nil /=.
-   by smt(W8.to_uint_cmp).
-   (* second coef *)
-   rewrite /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons. 
-   rewrite /to_uint  /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons /b2i /= !bs2int_nil /=.
-   by smt(W8.to_uint_cmp).
-+ move => kk H.
-  by rewrite get_setE 1:/# get_setE 1:/# !ifF; smt(@List). 
-+ move => kk H H0.
-  rewrite get_setE 1:/# get_setE 1:/#. 
-  case (kk =
-    min 256
-      (jcurr +
-       size
-         (filter (fun (c : int) => 0 <= c && c < q)
-            (bytes2coefs (take k{hr} (to_list (SHAKE128_SQUEEZE_168 stcurr).`2))))) +
-    1 ). 
-  + move => *. admit.
-  move => *. case(kk =
-    min 256
+auto => /> &hr ??????H6 H7??.
+
+pose j := (min 256
       (jcurr +
        size
          (filter (fun (c : int) => 0 <= c && c < q)
             (bytes2coefs (take k{hr} (to_list (SHAKE128_SQUEEZE_168 stcurr).`2)))))).
-   + move => *. admit.
-  by admit.
-(******)
-+ have -> : take (k{hr} + 3) (to_list (SHAKE128_SQUEEZE_168 stcurr).`2) =
+
+have -> : take (k{hr} + 3) (to_list (SHAKE128_SQUEEZE_168 stcurr).`2) =
             (take (k{hr}) (to_list (SHAKE128_SQUEEZE_168 stcurr).`2)) ++ 
             [(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}];(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}+1];(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}+2]].
   + have -> : (k{hr} + 3) = (((k{hr}+1)+1)+1) by smt().
     do 3!((rewrite (take_nth witness);1:smt(Array168.size_to_list))).
-    simplify. rewrite -!cats1. smt(@List).
+    by simplify;rewrite -!cats1 -!catA !cats1 /=. 
   rewrite /bytes2coefs map_cat flatten_cat chunk_cat. 
   + rewrite size_flatten !map_take -map_comp -map_take StdBigop.Bigint.sumzE big_mapT. 
   have -> : ((fun (x : int) => x) \o (List.size \o W8.w2bits)) = fun _ => 8
     by smt(W8.size_w2bits).
   by rewrite StdBigop.Bigint.big_constz count_predT;smt(size_take Array168.size_to_list).
-  rewrite map_cat filter_cat size_cat. 
-  case (!(to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %/ 16 +
-      16 * to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2] < q)).
-    + move => *;have : size
-      (filter (fun (c : int) => 0 <= c && c < q)
-         (map bs2int
-            (chunk 12
-               (flatten
-                  (map W8.w2bits
-                     [(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}]; (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1];
-                        (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]]))))) = 1; last by smt().
-    rewrite !map_cons /= /flatten /= /chunk /= map_mkseq /(\o) /= !size_cat !W8.size_w2bits /=.
-    have -> : 2 = 1+1 by auto.
-    rewrite !mkseqSr //= !cats0 /= /(\o) /= !mkseq1 /= !drop0.
-    have -> : bs2int (take 12
+rewrite !map_cat !filter_cat !size_cat.
+
+   have encode_c1 : bs2int (take 12
            (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] ++
             (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] ++ w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]))) = 
        to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] +
-        256 * (to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %% 16); last first. 
-    have -> : bs2int
+   256 * (to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %% 16).
+    (* second coef *)
+   + rewrite /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons. 
+     rewrite /to_uint  /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons /b2i /= !bs2int_nil /=.
+     by smt(W8.to_uint_cmp).
+
+  have encode_c2 : bs2int
           (take 12
              (drop 12
                 (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] ++
                  (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] ++
                   w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2])))) =
           to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %/ 16 +
-     16 * to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]; last first. 
-     rewrite ifT; 1: smt(W8.to_uint_cmp). 
-     rewrite ifF; 1: smt(W8.to_uint_cmp). 
-     by [].   
-     (* second coef *)
-     rewrite /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons. 
+   16 * to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2].
+   + rewrite /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons. 
      rewrite /to_uint  /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons /b2i /= !bs2int_nil /=.
      by smt(W8.to_uint_cmp).
-     (* second coef *)
-     rewrite /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons. 
-     rewrite /to_uint  /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons /b2i /= !bs2int_nil /=.
-     by smt(W8.to_uint_cmp).
-    + move => *;have : size
-      (filter (fun (c : int) => 0 <= c && c < q)
-         (map bs2int
-            (chunk 12
-               (flatten
-                  (map W8.w2bits
-                     [(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}]; (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1];
-                        (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]]))))) = 2; last by smt().
-    rewrite !map_cons /= /flatten /= /chunk /= map_mkseq /(\o) /= !size_cat !W8.size_w2bits /=.
-    have -> : 2 = 1+1 by auto.
-    rewrite !mkseqSr //= !cats0 /= /(\o) /= !mkseq1 /= !drop0.
-    have -> : bs2int (take 12
-           (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] ++
-            (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] ++ w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]))) = 
-       to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] +
-        256 * (to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %% 16); last first. 
-    have -> : bs2int
-          (take 12
-             (drop 12
-                (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] ++
-                 (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] ++
-                  w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2])))) =
-          to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %/ 16 +
-     16 * to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]; last first. 
-     rewrite ifT; 1: smt(W8.to_uint_cmp). 
-     rewrite ifT; 1: smt(W8.to_uint_cmp). 
-     by [].   
-     (* second coef *)
-     rewrite /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons. 
-     rewrite /to_uint  /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons /b2i /= !bs2int_nil /=.
-     by smt(W8.to_uint_cmp).
-     (* second coef *)
-     rewrite /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons. 
-     rewrite /to_uint  /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons /b2i /= !bs2int_nil /=.
-     by smt(W8.to_uint_cmp).
-+ admit.
-+ admit.
-+ have -> : take (k{hr} + 3) (to_list (SHAKE128_SQUEEZE_168 stcurr).`2) =
-            (take (k{hr}) (to_list (SHAKE128_SQUEEZE_168 stcurr).`2)) ++ 
-            [(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}];(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}+1];(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}+2]].
-  + have -> : (k{hr} + 3) = (((k{hr}+1)+1)+1) by smt().
-    do 3!((rewrite (take_nth witness);1:smt(Array168.size_to_list))).
-    simplify. rewrite -!cats1. smt(@List).
-  rewrite /bytes2coefs map_cat flatten_cat chunk_cat. 
-  + rewrite size_flatten !map_take -map_comp -map_take StdBigop.Bigint.sumzE big_mapT. 
-  have -> : ((fun (x : int) => x) \o (List.size \o W8.w2bits)) = fun _ => 8
-    by smt(W8.size_w2bits).
-  by rewrite StdBigop.Bigint.big_constz count_predT;smt(size_take Array168.size_to_list).
-  rewrite map_cat filter_cat size_cat.
-  have : size
-      (filter (fun (c : int) => 0 <= c && c < q)
-         (map bs2int
-            (chunk 12
-               (flatten
-                  (map W8.w2bits
-                     [(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}]; (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1];
-                        (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]]))))) = 1; last by smt().
-  rewrite !map_cons /= /flatten /= /chunk /= map_mkseq /(\o) /= !size_cat !W8.size_w2bits /=.
-  have -> : 2 = 1+1 by auto.
-  rewrite !mkseqSr //= !cats0 /= /(\o) /= !mkseq1 /= !drop0.
-  have -> : bs2int (take 12
-           (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] ++
-            (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] ++ w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]))) = 
-       to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] +
-   256 * (to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %% 16); last first. 
-  have -> : bs2int
-          (take 12
-             (drop 12
-                (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] ++
-                 (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] ++
-                  w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2])))) =
-          to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %/ 16 +
-   16 * to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]; last first. 
-   rewrite ifF; 1: smt(W8.to_uint_cmp). 
-   rewrite ifT; 1: smt(W8.to_uint_cmp). 
+
+have case11 : to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] +
+   256 * (to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %% 16) < q =>
+   to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %/ 16 +
+    16 * to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2] < q =>
+   filter (fun (c : int) => 0 <= c && c < q)
+            (map bs2int
+               (chunk 12
+                  (flatten
+                     (map W8.w2bits
+                        [(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}]; (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1];
+                           (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]])))) = 
+     [to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] +
+   256 * (to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %% 16);
+   to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %/ 16 +
+    16 * to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]].
+   + move => *;rewrite !map_cons /= /flatten /= /chunk /= map_mkseq /(\o) /= 
+        !size_cat !W8.size_w2bits /=.
+     rewrite {2}(: 2 = 1+1) 1:/#.
+     rewrite !mkseqSr //= !cats0 /= /(\o) /= !mkseq1 /= !drop0.
+   rewrite ifT;1: smt(W8.to_uint_cmp). 
+   rewrite ifT;1: smt(W8.to_uint_cmp). 
    by [].   
-   (* second coef *)
-   rewrite /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons. 
-   rewrite /to_uint  /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons /b2i /= !bs2int_nil /=.
-   by smt(W8.to_uint_cmp).
-   (* second coef *)
-   rewrite /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons. 
-   rewrite /to_uint  /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons /b2i /= !bs2int_nil /=.
-   by smt(W8.to_uint_cmp).
-+ admit.
-+ admit.
-+ have -> : take (k{hr} + 3) (to_list (SHAKE128_SQUEEZE_168 stcurr).`2) =
-            (take (k{hr}) (to_list (SHAKE128_SQUEEZE_168 stcurr).`2)) ++ 
-            [(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}];(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}+1];(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}+2]].
-  + have -> : (k{hr} + 3) = (((k{hr}+1)+1)+1) by smt().
-    do 3!((rewrite (take_nth witness);1:smt(Array168.size_to_list))).
-    simplify. rewrite -!cats1. smt(@List).
-  rewrite /bytes2coefs map_cat flatten_cat chunk_cat. 
-  + rewrite size_flatten !map_take -map_comp -map_take StdBigop.Bigint.sumzE big_mapT. 
-  have -> : ((fun (x : int) => x) \o (List.size \o W8.w2bits)) = fun _ => 8
-    by smt(W8.size_w2bits).
-  by rewrite StdBigop.Bigint.big_constz count_predT;smt(size_take Array168.size_to_list).
-  rewrite map_cat filter_cat size_cat. 
-  have : size
-      (filter (fun (c : int) => 0 <= c && c < q)
-         (map bs2int
-            (chunk 12
-               (flatten
-                  (map W8.w2bits
-                     [(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}]; (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1];
-                        (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]]))))) = 0; last by smt().
-    rewrite !map_cons /= /flatten /= /chunk /= map_mkseq /(\o) /= !size_cat !W8.size_w2bits /=.
-    have -> : 2 = 1+1 by auto.
-    rewrite !mkseqSr //= !cats0 /= /(\o) /= !mkseq1 /= !drop0.
-    have -> : bs2int (take 12
-           (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] ++
-            (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] ++ w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]))) = 
-       to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] +
-        256 * (to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %% 16); last first. 
-    have -> : bs2int
-          (take 12
-             (drop 12
-                (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] ++
-                 (w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] ++
-                  w2bits (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2])))) =
-          to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %/ 16 +
-     16 * to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]; last first. 
-     rewrite ifF; 1: smt(W8.to_uint_cmp). 
-     rewrite ifF; 1: smt(W8.to_uint_cmp). 
-     by [].   
-     (* second coef *)
-     rewrite /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons. 
-     rewrite /to_uint  /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons /b2i /= !bs2int_nil /=.
-     by smt(W8.to_uint_cmp).
-     (* second coef *)
-     rewrite /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons. 
-     rewrite /to_uint  /w2bits /= /mkseq /= -iotaredE /= !bs2int_cons /b2i /= !bs2int_nil /=.
-     by smt(W8.to_uint_cmp).
-+ admit.
+
+have case01 : !to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] +
+   256 * (to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %% 16) < q =>
+   to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %/ 16 +
+    16 * to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2] < q =>
+   filter (fun (c : int) => 0 <= c && c < q)
+            (map bs2int
+               (chunk 12
+                  (flatten
+                     (map W8.w2bits
+                        [(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}]; (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1];
+                           (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]])))) = 
+     [ to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %/ 16 +
+    16 * to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]].
+   + move => *;rewrite !map_cons /= /flatten /= /chunk /= map_mkseq /(\o) /= 
+        !size_cat !W8.size_w2bits /=.
+     rewrite {2}(: 2 = 1+1) 1:/#.
+     rewrite !mkseqSr //= !cats0 /= /(\o) /= !mkseq1 /= !drop0.
+   rewrite ifF;1: smt(W8.to_uint_cmp). 
+   rewrite ifT;1: smt(W8.to_uint_cmp). 
+   by [].   
+
+have case10 : to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] +
+   256 * (to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %% 16) < q =>
+   !to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %/ 16 +
+    16 * to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2] < q =>
+   filter (fun (c : int) => 0 <= c && c < q)
+            (map bs2int
+               (chunk 12
+                  (flatten
+                     (map W8.w2bits
+                        [(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}]; (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1];
+                           (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]])))) = 
+     [ to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] +
+   256 * (to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %% 16)].
+   + move => *;rewrite !map_cons /= /flatten /= /chunk /= map_mkseq /(\o) /= 
+        !size_cat !W8.size_w2bits /=.
+     rewrite {2}(: 2 = 1+1) 1:/#.
+     rewrite !mkseqSr //= !cats0 /= /(\o) /= !mkseq1 /= !drop0.
+   rewrite ifT;1: smt(W8.to_uint_cmp). 
+   rewrite ifF;1: smt(W8.to_uint_cmp). 
+   by [].   
+
+have case00 :! to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] +
+   256 * (to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %% 16) < q =>
+   !to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1] %/ 16 +
+    16 * to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2] < q =>
+   filter (fun (c : int) => 0 <= c && c < q)
+            (map bs2int
+               (chunk 12
+                  (flatten
+                     (map W8.w2bits
+                        [(SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}]; (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 1];
+                           (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr} + 2]])))) = 
+     [].
+   + move => *;rewrite !map_cons /= /flatten /= /chunk /= map_mkseq /(\o) /= 
+        !size_cat !W8.size_w2bits /=.
+     rewrite {2}(: 2 = 1+1) 1:/#.
+     rewrite !mkseqSr //= !cats0 /= /(\o) /= !mkseq1 /= !drop0.
+   rewrite ifF;1: smt(W8.to_uint_cmp). 
+   rewrite ifF;1: smt(W8.to_uint_cmp). 
+   by [].   
+
+
+ split; move => Hc1; split; move => Hc2 *; do split;1..7,10..15,19..24,28..31:by smt().  
+
++ move => kk H.
+  by rewrite get_setE 1:/# get_setE 1:/# !ifF;smt(size_ge0).
++ move => kk H H0.
+  rewrite get_setE 1:/# get_setE 1:/#. 
+  case (kk = j + 1); 1:by move => *; congr; rewrite nth_cat;smt(size_ge0).
+  move => *;case(kk = j);1: by move => *;congr;rewrite nth_cat ifF; smt(size_ge0). 
+  by move => *; rewrite nth_cat ifT 1:/#;move : (H7 kk _); smt(size_ge0).   
+(******)
++ by smt().
++ move => kk H.
+  by rewrite get_setE 1:/#  !ifF;smt(size_ge0).
++ move => kk H H0.
+  rewrite get_setE 1:/#. 
+  case (kk = j); 1:by move => *; congr; rewrite nth_cat;smt(size_ge0).
+  by move => *; rewrite nth_cat ifT 1:/#;move : (H7 kk _); smt(size_ge0).   
++ by smt().
++ move => kk H.
+  by rewrite get_setE 1:/#  !ifF;smt(size_ge0).
++ move => kk H H0.
+  rewrite get_setE 1:/#. 
+  case (kk = j); 1:by move => *; congr; rewrite nth_cat;smt(size_ge0).
+  by move => *; rewrite nth_cat ifT 1:/#;move : (H7 kk _); smt(size_ge0).   
++ by smt().
++ move => kk H H0.
+  by rewrite case00 1,2:/# cats0 /= /#.
 qed.
 
 (* We know it terminates, but we need to prove it based on fullparse. *)
