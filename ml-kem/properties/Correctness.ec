@@ -890,7 +890,6 @@ qed.
 (************************************)
 (************************************)
 
-print Parse.
 
 (*
 module XOF = {
@@ -949,8 +948,8 @@ op parsebody(parsest : poly * W64.t Array25.t * int) : poly * W64.t Array25.t * 
 op max_parse_iter : { int | 0 < max_parse_iter } as gt0_max_parse_iter.
 
 (* We capture this using the axiom proved in Kyber Terminates eprint *)
-axiom parse_termination (_st : W64.t Array25.t): 
-   0 < count (fun c => 0 <= c < q) (bytes2coefs (take 168 (st2bytes _st))) =>
+axiom parse_termination (_st : W64.t Array25.t) _rho _i _j: 
+   _st = SHAKE128_ABSORB_34 _rho _i _j => 
     256 <= size (iter max_parse_iter (fun (lst : (_ * _)) => 
        let stbuf = SHAKE128_SQUEEZE_168 lst.`2 in
        let good = filter (fun x => 0 <= x < q) (bytes2coefs (Array168.to_list stbuf.`2)) in
@@ -982,8 +981,8 @@ move => /= n ge0n [Hind1 Hind2].
 by rewrite !iterS;smt(size_cat size_ge0).
 qed.
 
-lemma fullparse (_st : W64.t Array25.t): 
-   0 < count (fun c => 0 <= c < q) (bytes2coefs (take 168 (st2bytes _st))) =>
+lemma fullparse (_st : W64.t Array25.t) _rho _i _j: 
+   _st = SHAKE128_ABSORB_34 _rho _i _j => 
       (iter max_parse_iter parsebody (witness,_st, 0)).`3 = 256
  by smt(parse_termination parse_cntfilter).
 
@@ -1181,8 +1180,8 @@ module ParseC(XOF0 : XOF_t) = {
   }
 }.
 
-lemma parse_semC _st : 
-  (0 < count (fun (c : int) => 0 <= c && c < q) (bytes2coefs (take 168 (st2bytes _st)))) =>
+lemma parse_semC _st _rho _i _j: 
+   _st = SHAKE128_ABSORB_34 _rho _i _j => 
   phoare [ ParseC(XOF).sample : XOF.state = _st ==> 
      res = (parse _st).`1 /\ XOF.state = (parse _st).`2 ] = 1%r.
 proof. 
@@ -1190,7 +1189,8 @@ move => goodinit.
 proc.
 while(0<=j<=256 /\ 0<= count /\ (aa,XOF.state,j) = iter count parsebody (witness,_st,0)) (max_parse_iter - count); last first. 
 + auto => />; split;1: by smt(iter0). 
-  by  smt(fullparse converges).  
+  have := fullparse _st _rho _i _j goodinit.
+  by  smt(converges).  
 
 move => z.
 inline 1;exists * XOF.state{hr}, aa{hr}, j{hr}, count{hr}; elim * => stcurr acurr jcurr ccurr.
@@ -1379,13 +1379,11 @@ equiv parse_parsec :
    Parse(XOF).sample ~ ParseC(XOF).sample : 
     ={glob XOF} ==> ={glob XOF,res} by sim.
 
-
-lemma parse_sem _st : 
-  (0 < count (fun (c : int) => 0 <= c && c < q) (bytes2coefs (take 168 (st2bytes _st)))) =>
+lemma parse_sem _st _rho _i _j: 
+   _st = SHAKE128_ABSORB_34 _rho _i _j => 
   phoare [ Parse(XOF).sample : XOF.state = _st ==> 
      res = (parse _st).`1 /\ XOF.state = (parse _st).`2 ] = 1%r by
-move => goodst0; conseq parse_parsec (parse_semC _st goodst0); smt().
-
+move => goodst0; conseq parse_parsec (parse_semC _st _rho _i _j goodst0); smt().
 
 import PolyMat.
 module Hmodule = {
