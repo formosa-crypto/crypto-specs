@@ -949,16 +949,14 @@ op parsebody(parsest : poly * W64.t Array25.t * int) : poly * W64.t Array25.t * 
 op max_parse_iter : { int | 0 < max_parse_iter } as gt0_max_parse_iter.
 
 (* We capture this using the axiom proved in Kyber Terminates eprint *)
-axiom termination (_st : W64.t Array25.t): 
+axiom parse_termination (_st : W64.t Array25.t): 
    0 < count (fun c => 0 <= c < q) (bytes2coefs (take 168 (st2bytes _st))) =>
     256 <= size (iter max_parse_iter (fun (lst : (_ * _)) => 
        let stbuf = SHAKE128_SQUEEZE_168 lst.`2 in
        let good = filter (fun x => 0 <= x < q) (bytes2coefs (Array168.to_list stbuf.`2)) in
           (lst.`1 ++ good, stbuf.`1)) ([],_st)).`1.
 
-timeout 1. 
-
-lemma cntfilter  (_st : W64.t Array25.t) n:
+lemma parse_cntfilter  (_st : W64.t Array25.t) n:
    (iter n parsebody (witness,_st, 0)).`3 =
    min 256 
       (size (iter n (fun (lst : (_ * _)) => 
@@ -987,7 +985,7 @@ qed.
 lemma fullparse (_st : W64.t Array25.t): 
    0 < count (fun c => 0 <= c < q) (bytes2coefs (take 168 (st2bytes _st))) =>
       (iter max_parse_iter parsebody (witness,_st, 0)).`3 = 256
- by smt(termination cntfilter).
+ by smt(parse_termination parse_cntfilter).
 
 lemma  iter_comp (_st0 : 'a) (n off : int) (f : 'a -> 'a) :
    0 <= n => 0 <= off =>
@@ -1020,8 +1018,6 @@ op parse(st: W64.t Array25.t) : poly * W64.t Array25.t =
       (parsest.`1, parsest.`2).
 
 import StdBigop.Bigint.BIA.
-
-
 lemma size_bytes2coefs l kk:
       0 <= kk <= 168 => 
       size l = 168 => 
@@ -1075,24 +1071,7 @@ rewrite /(\o) /= addrC mkseqSr /(\o) 1:size_ge0 /=.
 by have <- : (List.size \o W8.w2bits) = (fun (_ : W8.t) => 8) by
  smt(size_map W8.size_w2bits).
 qed.
-(*
-lemma mem_bytes2coefs  l kk x :
-      0 <= kk <= 168 => 
-      size l = 168 => 
-      kk %% 3 = 0 => 
-       x \in  (bytes2coefs (take kk l))  =>
-       x \in  (bytes2coefs l).
-proof. 
-move => ???. 
-rewrite /bytes2coefs /= map_take. 
-rewrite -{2}(cat_take_drop kk (map W8.w2bits l)) flatten_cat.
-rewrite chunk_cat;last by rewrite map_cat;smt(mem_cat).
-rewrite size_flatten map_take -map_comp -map_take StdBigop.Bigint.sumzE big_mapT. 
-have -> : ((fun (x : int) => x) \o (List.size \o W8.w2bits)) = fun _ => 8
-    by smt(W8.size_w2bits).
-  by rewrite StdBigop.Bigint.big_constz count_predT;smt(size_take).
-qed.
-*)
+
 lemma subseq_coefs l kk : 
       0 <= kk <= 168 => 
       size l = 168 => 
@@ -1111,7 +1090,6 @@ apply cat_subseq;last by smt(subseq0).
 have -> : (chunk 12 (flatten (map W8.w2bits (take kk l))))= (chunk 12 (flatten (take kk (map W8.w2bits l)))); last by apply subseq_refl.
 by congr;congr;rewrite map_take.
 qed.
-
 
 lemma bytes2coefs_take l kk : 
       0 <= kk <= 168 %/ 3 * 2 => 
@@ -1162,46 +1140,61 @@ qed.
 lemma split_triple (a1 a2 : 'a) (b1 b2 : 'b) (c1 c2 : 'c) :
       a1 = a2 => b1 = b2 => c1 = c2 => (a1,b1,c1) = (a2,b2,c2) by smt().
 
-op first_n (_st : W64.t Array25.t) (_stn : poly * W64.t Array25.t * int) = if max_parse_iter < find (fun n => _stn = iter n parsebody (witness,_st,0)) (iota_ 0 (max_parse_iter + 1)) then -1 else  find (fun n => _stn = iter n parsebody (witness,_st,0)) (iota_ 0 (max_parse_iter + 1)).
+module ParseC(XOF0 : XOF_t) = {
+  proc sample() : poly = {
+    var j : int;
+    var b168 : W8.t Array168.t;
+    var bi : W8.t;
+    var bi1 : W8.t;
+    var bi2 : W8.t;
+    var d1 : int;
+    var d2 : int;
+    var k : int;
+    var aa : poly;
+    var count : int;
+    
+    aa <- witness;
+    j <- 0; count <- 0;
+    while (j < 256){
+      b168 <@ XOF0.next_bytes();
+      k <- 0;
+      while (j < 256 && k < 168){
+        bi <- b168.[k];
+        bi1 <- b168.[k + 1];
+        bi2 <- b168.[k + 2];
+        k <- k + 3;
+        d1 <- to_uint bi + 256 * (to_uint bi1 %% 16);
+        d2 <- to_uint bi1 %/ 16 + 16 * to_uint bi2;
+        if (d1 < q) {
+          aa.[j] <- incoeff d1;
+          j <- j + 1;
+        }
+        if (d2 < q && j < 256) {
+          aa.[j] <- incoeff d2;
+          j <- j + 1;
+        }
+      }
+      count <- count + 1;
+    }
+    
+    return aa;
+  }
+}.
 
-lemma parse_sem_h _st : 
+lemma parse_semC _st : 
   (0 < count (fun (c : int) => 0 <= c && c < q) (bytes2coefs (take 168 (st2bytes _st)))) =>
-  phoare [ Parse(XOF).sample : XOF.state = _st ==> 
+  phoare [ ParseC(XOF).sample : XOF.state = _st ==> 
      res = (parse _st).`1 /\ XOF.state = (parse _st).`2 ] = 1%r.
 proof. 
 move => goodinit.
 proc.
-while(0<=j<=256 /\ exists n, 0 <= n /\ n = first_n  _st (aa,XOF.state,j)) (max_parse_iter - first_n _st (aa,XOF.state,j));
-   last first. 
-+ auto => />;split;1: by exists 0;rewrite /first_n /= iotaS /=;smt(iter0 gt0_max_parse_iter).
-  move => stn aan jn;split;last first. 
-  + move => ???;rewrite /first_n => H.
-    by have := has_find (fun (n0 : int) => (aan, stn, jn) = iter n0 parsebody (witness, _st, 0)) (iota_ 0 (max_parse_iter + 1)); rewrite size_iota /max ifT;
-        smt(hasP fullparse converges mem_iota gt0_max_parse_iter).
-  move => ? H; rewrite /first_n.
-  have := has_find (fun (n0 : int) => (aan, stn, jn) = iter n0 parsebody (witness, _st, 0)) (iota_ 0 (max_parse_iter + 1)); rewrite size_iota /max ifT;1:
-        smt(gt0_max_parse_iter).
-  by have /= := nth_find witness (fun (n0 : int) => (aan, stn, jn) = iter n0 parsebody (witness, _st, 0)) (iota_ 0 (max_parse_iter + 1)); smt(fullparse converges nth_iota).
+while(0<=j<=256 /\ 0<= count /\ (aa,XOF.state,j) = iter count parsebody (witness,_st,0)) (max_parse_iter - count); last first. 
++ auto => />; split;1: by smt(iter0). 
+  by  smt(fullparse converges).  
 
 move => z.
-inline 1;exists * XOF.state{hr}, aa{hr}, j{hr} ; elim * => stcurr acurr jcurr ncurr.
-conseq (: _ ==> 0 <= j <= 256 /\ 0 <= ncurr + 1 
-      /\ (aa, XOF.state, j) = iter (ncurr + 1) parsebody (witness, _st, 0)).  
-move => &hr [#] ?????????stn an jn; do split.  
-+ move => [#] ??Hn?;do split;1..3:  smt().   
-  rewrite iterS 1:/#.
-  elim Hn => n [nge0 ]; rewrite /first_n => Hn0.
-  have Hn1 : !max_parse_iter <
-        find (fun (n0 : int) => (an, stn, jn) = iter n0 parsebody (witness, _st, 0)) (iota_ 0 (max_parse_iter + 1)) by smt().
-  move : Hn0; rewrite Hn1 /=. admit.
-  
-+ move => [#] ???H;do split;1..2:smt().  
-  exists (ncurr+1);split;1:smt().
-  rewrite /first_n ifF. admit. admit. 
-  have -> : first_n _st (an, stn, jn) = ncurr + 1;last by smt().
-  admit.
-
-while(XOF.state = (SHAKE128_SQUEEZE_168 stcurr).`1
+inline 1;exists * XOF.state{hr}, aa{hr}, j{hr}, count{hr}; elim * => stcurr acurr jcurr ccurr.
+wp;while(XOF.state = (SHAKE128_SQUEEZE_168 stcurr).`1 /\ 0 <= ccurr
         /\ b168 = (SHAKE128_SQUEEZE_168 stcurr).`2 
         /\ 0 <= j <= 256 /\ 0 <= k <= 168 /\ k %% 3 = 0 /\ (jcurr - j)*3 <= k*2
         /\ j = min 256 (jcurr + 
@@ -1211,25 +1204,25 @@ while(XOF.state = (SHAKE128_SQUEEZE_168 stcurr).`1
         /\ (forall kk, jcurr <= kk < j => aa.[kk] = incoeff
               (nth witness (filter (fun (c : int) => 0 <= c && c < q) 
                  (bytes2coefs (take k (to_list (SHAKE128_SQUEEZE_168 stcurr).`2)))) (kk - jcurr)))) (168-k); last first. 
-+ auto => /> *;split. 
-  + split; 1,2: by smt(take0 mkseq0). 
++ auto => /> *;do split;1,2:by smt(take0 mkseq0). 
   move => aa k;split; 1: by move => *;smt(size_filter).
-  move => H H0 H1 ??? H2 H3 H4;split;1:smt().
+  move => H H0 H1 ??? H2 H3 H4;split;2: by smt().
   rewrite iterS /= 1:/# /(parsebody (iter _ _ _)) /=. 
    have sizele : size (filter (fun (c : int) => 0 <= c && c < q) (bytes2coefs (take k (to_list (SHAKE128_SQUEEZE_168 stcurr).`2)))) <= size (filter (fun (x : int) => 0 <= x && x < q) (bytes2coefs (to_list (SHAKE128_SQUEEZE_168 stcurr).`2))).
    by rewrite !size_filter;apply count_subseq;apply subseq_coefs; smt(size_bytes2coefs Array168.size_to_list).
  
-  case ((iter ncurr parsebody (witness, _st, 0)).`3 = 256); 1:by smt().
-  move => n256prev; apply split_triple;2..:by smt(take_size Array168.size_to_list).
+  split; 1: by smt().
+  case ((iter ccurr parsebody (witness, _st, 0)).`3 = 256); 1:by smt().
+  move => n256prev. apply split_triple;2..:by smt(take_size Array168.size_to_list).
   move => *;apply Array256.tP => ii iib;rewrite initiE //= eq_sym /= fun_if2 ifI; last by smt(take_size Array168.size_to_list).
   move => [? iib2]; rewrite H4;1: by smt(take_size Array168.size_to_list). 
   congr. 
   have /= b2cr := bytes2coefs_take (to_list (SHAKE128_SQUEEZE_168 stcurr).`2) (k %/ 3* 2) _  _ _;1..3:smt(Array168.size_to_list).
-  by rewrite -(cat_take_drop (k %/3 * 2) (bytes2coefs (to_list (SHAKE128_SQUEEZE_168 (iter ncurr parsebody (witness, _st, 0)).`2).`2))) filter_cat nth_cat  ifT; smt(size_filter take_size Array168.size_to_list size_bytes2coefs).
+  by rewrite -(cat_take_drop (k %/3 * 2) (bytes2coefs (to_list (SHAKE128_SQUEEZE_168 (iter ccurr parsebody (witness, _st, 0)).`2).`2))) filter_cat nth_cat  ifT; smt(size_filter take_size Array168.size_to_list size_bytes2coefs).
 
 (* LOOP BODY! *)
 move => z0.
-auto => /> &hr ??????H6 H7??. 
+auto => /> &hr ???????H6 H7??. 
 
 pose j := (min 256
       (jcurr +
@@ -1382,11 +1375,17 @@ have case00 :! to_uint (SHAKE128_SQUEEZE_168 stcurr).`2.[k{hr}] +
   by rewrite case00 1,2:/# cats0 /= /#.
 qed.
 
+equiv parse_parsec : 
+   Parse(XOF).sample ~ ParseC(XOF).sample : 
+    ={glob XOF} ==> ={glob XOF,res} by sim.
+
+
 lemma parse_sem _st : 
-  (0 < count (fun (c : int) => 0 <= c && c < 3329) (bytes2coefs (take 168 (st2bytes _st)))) =>
+  (0 < count (fun (c : int) => 0 <= c && c < q) (bytes2coefs (take 168 (st2bytes _st)))) =>
   phoare [ Parse(XOF).sample : XOF.state = _st ==> 
-     res = (parse _st).`1 /\ XOF.state = (parse _st).`2 ] = 1%r
-  by move => goodst0; conseq (Parser_ll _st goodst0) (parse_sem_h _st goodst0).
+     res = (parse _st).`1 /\ XOF.state = (parse _st).`2 ] = 1%r by
+move => goodst0; conseq parse_parsec (parse_semC _st goodst0); smt().
+
 
 import PolyMat.
 module Hmodule = {
