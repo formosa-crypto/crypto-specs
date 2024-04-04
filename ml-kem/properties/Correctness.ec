@@ -1020,6 +1020,8 @@ op parse(st: W64.t Array25.t) : poly * W64.t Array25.t =
       (parsest.`1, parsest.`2).
 
 import StdBigop.Bigint.BIA.
+
+
 lemma size_bytes2coefs l kk:
       0 <= kk <= 168 => 
       size l = 168 => 
@@ -1073,7 +1075,7 @@ rewrite /(\o) /= addrC mkseqSr /(\o) 1:size_ge0 /=.
 by have <- : (List.size \o W8.w2bits) = (fun (_ : W8.t) => 8) by
  smt(size_map W8.size_w2bits).
 qed.
-
+(*
 lemma mem_bytes2coefs  l kk x :
       0 <= kk <= 168 => 
       size l = 168 => 
@@ -1090,7 +1092,7 @@ have -> : ((fun (x : int) => x) \o (List.size \o W8.w2bits)) = fun _ => 8
     by smt(W8.size_w2bits).
   by rewrite StdBigop.Bigint.big_constz count_predT;smt(size_take).
 qed.
-
+*)
 lemma subseq_coefs l kk : 
       0 <= kk <= 168 => 
       size l = 168 => 
@@ -1160,7 +1162,7 @@ qed.
 lemma split_triple (a1 a2 : 'a) (b1 b2 : 'b) (c1 c2 : 'c) :
       a1 = a2 => b1 = b2 => c1 = c2 => (a1,b1,c1) = (a2,b2,c2) by smt().
 
-op first_n (_st : W64.t Array25.t) (_stn : poly * W64.t Array25.t * int) = find (fun n => _stn = iter n parsebody (witness,_st,0)) (iota_ 0 max_parse_iter).
+op first_n (_st : W64.t Array25.t) (_stn : poly * W64.t Array25.t * int) = if max_parse_iter < find (fun n => _stn = iter n parsebody (witness,_st,0)) (iota_ 0 (max_parse_iter + 1)) then -1 else  find (fun n => _stn = iter n parsebody (witness,_st,0)) (iota_ 0 (max_parse_iter + 1)).
 
 lemma parse_sem_h _st : 
   (0 < count (fun (c : int) => 0 <= c && c < q) (bytes2coefs (take 168 (st2bytes _st)))) =>
@@ -1169,19 +1171,36 @@ lemma parse_sem_h _st :
 proof. 
 move => goodinit.
 proc.
-while(0<=j<=256 /\ exists n, 0 <= n /\ (aa,XOF.state,j) = iter n parsebody (witness,_st,0)) (max_parse_iter - first_n _st (aa,XOF.state,j));
+while(0<=j<=256 /\ exists n, 0 <= n /\ n = first_n  _st (aa,XOF.state,j)) (max_parse_iter - first_n _st (aa,XOF.state,j));
    last first. 
-+ auto => />;split; 1: by exists 0; smt(iter0). 
-  move => stn aan jn;split;2: by  smt(fullparse converges).  
-  move => ?? n nge0 H.
-  rewrite /first_n. admit.
++ auto => />;split;1: by exists 0;rewrite /first_n /= iotaS /=;smt(iter0 gt0_max_parse_iter).
+  move => stn aan jn;split;last first. 
+  + move => ???;rewrite /first_n => H.
+    by have := has_find (fun (n0 : int) => (aan, stn, jn) = iter n0 parsebody (witness, _st, 0)) (iota_ 0 (max_parse_iter + 1)); rewrite size_iota /max ifT;
+        smt(hasP fullparse converges mem_iota gt0_max_parse_iter).
+  move => ? H; rewrite /first_n.
+  have := has_find (fun (n0 : int) => (aan, stn, jn) = iter n0 parsebody (witness, _st, 0)) (iota_ 0 (max_parse_iter + 1)); rewrite size_iota /max ifT;1:
+        smt(gt0_max_parse_iter).
+  by have /= := nth_find witness (fun (n0 : int) => (aan, stn, jn) = iter n0 parsebody (witness, _st, 0)) (iota_ 0 (max_parse_iter + 1)); smt(fullparse converges nth_iota).
+
 move => z.
 inline 1;exists * XOF.state{hr}, aa{hr}, j{hr} ; elim * => stcurr acurr jcurr ncurr.
 conseq (: _ ==> 0 <= j <= 256 /\ 0 <= ncurr + 1 
       /\ (aa, XOF.state, j) = iter (ncurr + 1) parsebody (witness, _st, 0)).  
-move => &hr [#] ????????????; do split.  
- + move => [#] ????. do split.  smt(). smt(). smt().  rewrite iterS. smt(). admit. 
-  move => [#] ????. do split.  smt(). smt(). smt().  admit. 
+move => &hr [#] ?????????stn an jn; do split.  
++ move => [#] ??Hn?;do split;1..3:  smt().   
+  rewrite iterS 1:/#.
+  elim Hn => n [nge0 ]; rewrite /first_n => Hn0.
+  have Hn1 : !max_parse_iter <
+        find (fun (n0 : int) => (an, stn, jn) = iter n0 parsebody (witness, _st, 0)) (iota_ 0 (max_parse_iter + 1)) by smt().
+  move : Hn0; rewrite Hn1 /=. admit.
+  
++ move => [#] ???H;do split;1..2:smt().  
+  exists (ncurr+1);split;1:smt().
+  rewrite /first_n ifF. admit. admit. 
+  have -> : first_n _st (an, stn, jn) = ncurr + 1;last by smt().
+  admit.
+
 while(XOF.state = (SHAKE128_SQUEEZE_168 stcurr).`1
         /\ b168 = (SHAKE128_SQUEEZE_168 stcurr).`2 
         /\ 0 <= j <= 256 /\ 0 <= k <= 168 /\ k %% 3 = 0 /\ (jcurr - j)*3 <= k*2
