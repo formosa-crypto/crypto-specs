@@ -53,7 +53,7 @@ lemma frac_bound x: 0%r <= frac x < 1%r
 by smt(floor_bound).
 
 lemma fracDz x n: frac (n%r + x) = frac x
-by smt(floorDz).
+  by have := floorDz n x; rewrite /frac => -> /= /#.
 
 lemma floor_frac_eq x: x = (floor x)%r + frac x
 by smt().
@@ -96,11 +96,12 @@ split => H.
   rewrite (floor_frac_eq (m%r / n%r)) H/= divz_floor /#.
  have : m%r = (m %/ n)%r * n%r + (m %% n)%r by smt(divz_eq).
  by rewrite -E dvdzE /#.
-have : m%r = (m %/ n)%r * n%r + (m %% n)%r by smt(divz_eq).
+have : m%r = (m %/ n)%r * n%r + (m %% n)%r.
++ have := divz_eq m n;smt().
 rewrite H /= => ->.
 rewrite /frac.
 have -> : ((m %/ n)%r * n%r / n%r) = (m %/ n)%r by smt().
-by smt(floorE). 
+by have := floorE (m%/n); smt(). 
 qed.
 
 lemma frac_inv_gt1 x: 1%r < x => frac (inv x) = inv x.

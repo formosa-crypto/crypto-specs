@@ -292,7 +292,9 @@ move => n_gt0 Hsz0.
  rewrite -{1}(cat_take_drop n l).
 case: (size l < n) => Hsz.
  by rewrite !drop_oversize 1:/# cats0 take_oversize 1:/# chunkify_nil chunkifyE // chunk0 /#.
-rewrite chunkify_cat ?size_take 1..3:/# chunkify_chunk // ?size_take' 1..2:/# chunk_size 1:/#. 
+rewrite chunkify_cat ?size_take 1..2:/#.
++ case (n = size l);smt().
+rewrite chunkify_chunk // ?size_take' 1..2:/# chunk_size 1:/#. 
  by rewrite size_take' /#.
 smt().
 qed.
@@ -853,7 +855,7 @@ rewrite chunkpadE ?n_gt0 //.
 case: (n %| size xs) => C.
  have ->: size xs = n by smt().
  by rewrite /= nseq0.
-by congr; smt().
+by congr; case(n = size xs); smt(). 
 qed.
 
 lemma SSSs_from_TTTsK_dvd l:
