@@ -229,7 +229,8 @@ case: (0 <= x1 && x1 < 2 ^ k1) => Hx1.
   have  : x2 * 2 ^ k1 + 1*2^k1 <= 2 ^ k2 * 2 ^ k1; last by smt().
   by rewrite -Ring.IntID.mulrDl /#.
  split; 1: by smt().
- by move => *; smt(exprD_nneg expr_gt0).
+ move => *;move : H => [HH HH0];rewrite exprD_nneg in HH0 => //. 
+ by smt(expr_gt0).
 by rewrite !b2i0.
 qed.
 
@@ -460,7 +461,8 @@ proof.
 rewrite /support dcbd1E /mcbd.
 have ->: (-eta_ <= x && x <= eta_) = (0 < bin (2 * eta_) (x + eta_))
  by smt(gt0_bin).
-smt(@RealOrder).
+have ? : 0%r < inv 2%r ^ (2 * eta_); last by smt(@RealOrder).
+by smt(@RealOrder).
 qed.
 
 lemma ll_dcbd eta_:

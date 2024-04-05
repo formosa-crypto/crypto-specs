@@ -1453,6 +1453,29 @@ have rnjj := mrangeR _ _ rng.
 by rewrite trmxE !setmE /= !offunmE //= !offunmK /mclamp rng /= /#. 
 qed.
 
+op sampleA(sd : W8.t Array32.t) : polymat = 
+ witness<:polymat>
+        .[0, 0 <- (parse (SHAKE128_ABSORB_34 sd W8.zero W8.zero)).`1]
+        .[0, 1 <- (parse (SHAKE128_ABSORB_34 sd W8.one W8.zero)).`1]
+        .[0, 2 <- (parse (SHAKE128_ABSORB_34 sd (W8.of_int 2) W8.zero)).`1]
+        .[1, 0 <- (parse (SHAKE128_ABSORB_34 sd W8.zero W8.one)).`1]
+        .[1, 1 <- (parse (SHAKE128_ABSORB_34 sd W8.one W8.one)).`1]
+        .[1, 2 <- (parse (SHAKE128_ABSORB_34 sd (W8.of_int 2) W8.one)).`1]
+        .[2, 0 <- (parse (SHAKE128_ABSORB_34 sd W8.zero (W8.of_int 2))).`1]
+        .[2, 1 <- (parse (SHAKE128_ABSORB_34 sd W8.one (W8.of_int 2))).`1]
+        .[2, 2 <- (parse (SHAKE128_ABSORB_34 sd (W8.of_int 2) (W8.of_int 2))).`1].
+   
+lemma sampleA_sem _sd :
+   phoare [ Hmodule.sampleA : arg = _sd ==> res = sampleA _sd ] = 1%r.
+proc. 
+inline *.
+do 4!(unroll for ^while).
+auto => />.
+qed.
+
+lemma sampleAT_sem _sd : 
+   phoare [ Hmodule.sampleAT : arg = _sd ==> res = trmx (sampleA _sd) ] = 1%r
+ by conseq H_sem_equiv (sampleA_sem _sd);smt().
 
 require import DMap Array168 DList.
 clone DMapSampling as MSlw168 with
