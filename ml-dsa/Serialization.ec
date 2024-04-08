@@ -1,16 +1,10 @@
 require import AllCore BitEncoding List RealExp IntDiv.
 from Jasmin require import JModel.
 
-require import Array32 Array64 Array96 Array256 Array1952 Array3309 Array4032.
+require import Array16 Array32 Array64 Array96 Array256 Array1952 Array3309 Array4032.
 
-require import GFq.
-require import Rq.
-require import VecMat.
-import PolyLVec.
-import PolyKVec.
-import PolyMat.
-require import Conversion.
-require import Symmetric.
+require import Parameters GFq Rq VecMat Conversion Symmetric.
+import PolyLVec PolyKVec PolyMat.
 
 module PkEncDec = {
   proc pkEncode(rho : W8.t Array32.t, t1 : polykvec) : W8.t Array1952.t = {
@@ -103,7 +97,7 @@ module SkEncDec = {
 }.
 
 module SigEncDec = {
-  proc sigEncode(ct : W8.t Array96.t, z : polylvec, h : polykvec) : W8.t Array3309.t = {
+  proc sigEncode(ct1 : W8.t Array32.t, ct2 : W8.t Array16.t, z : polylvec, h : polykvec) : W8.t Array3309.t = {
     var sigma, sigbytes, sigi, i;
     sigbytes <- [];
     i <- 0;
@@ -115,26 +109,28 @@ module SigEncDec = {
     sigi <@ HintPackUnpack.hintBitPack(h);
     sigbytes <- sigbytes ++ sigi;
     sigma <- Array3309.init (fun ii =>
-      if 0 <= ii < 96 then ct.[ii]
+      if 0 <= ii < 32 then ct1.[ii]
+      else if 32 <= ii < 96 then ct2.[ii]
       else nth witness sigbytes (ii - 96));
     return sigma;
   }
 
   proc sigDecode(sigma : W8.t Array3309.t) : 
-    W8.t Array96.t * polylvec * polykvec option = {
-     var ct,sigi,h,i;
+    W8.t Array32.t * W8.t Array16.t * polylvec * polykvec option = {
+     var ct1,ct2,sigi,h,i;
      var z : polylvec;
      z <- witness;
-     ct <- Array96.init(fun ii => sigma.[ii]);
+     ct1 <- Array32.init(fun ii => sigma.[ii]);
+     ct2 <- Array16.init(fun ii => sigma.[ii-32]);
      i <- 0;
      while (i < lvec) {
-       sigi <- BitUnpack (mkseq (fun ii => sigma.[96 + 96*i + ii]) 256) (gamma1 - 1) gamma1;
+       sigi <- BitUnpack (mkseq (fun ii => sigma.[48 + 96*i + ii]) 256) (gamma1 - 1) gamma1;
        z <- z.[i <- sigi];
        i <- i + 1;
     }
     h <@ HintPackUnpack.hintBitUnpack(mkseq (fun ii => sigma.[96 + 96*lvec + ii]) (kvec + w_hint));
 
-    return (ct,z,h);
+    return (ct1,ct2,z,h);
   }
 }.
 

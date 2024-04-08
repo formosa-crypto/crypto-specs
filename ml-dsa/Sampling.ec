@@ -2,16 +2,8 @@ require import AllCore IntDiv.
 from Jasmin require import JModel.
 
 require import Array2 Array32 Array64 Array136 Array168 Array256 Array320.
-require import GFq.
-require import Rq.
-import Zq.
-
-require import Symmetric Conversion VecMat.
-import PolyMat.
-import PolyKVec.
-import PolyLVec.
-
-op tau = 33.
+require import Parameters GFq Rq Symmetric Conversion VecMat.
+import Zq PolyMat PolyKVec PolyLVec.
 
 module SampleInBall = {
    proc sample(rho : W8.t Array32.t) : poly = {

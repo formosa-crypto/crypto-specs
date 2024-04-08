@@ -4,7 +4,7 @@ require import List.
 require import Ring.
 require import Array256.
 
-require import GFq.
+require import Parameters GFq.
 import Zq.
 
 (******************************************************)
@@ -33,20 +33,11 @@ op (&+) (pa pb : poly) : poly =
 
 op (&-) (p : poly) : poly =  map Zq.([-]) p.
 
-(*
-(* Compression/decompression of polys *)
-
-op compress_poly(d : int, p : poly) : int Array256.t =  map (compress d) p.
-
-op decompress_poly(d : int, p : int Array256.t) : poly =  map (decompress d) p.
-*)
 
 (**************************************************)
 (**************************************************)
 
-(* The NTT operation over ring elements 
-
-*)
+(* The NTT operation over ring elements *)
 
 require (****) Bigalg.
 clone import Bigalg.BigComRing as BigDom with
@@ -82,13 +73,21 @@ op ntt(p : poly) : poly = Array256.init (fun i =>
   then let ii = i %/ 2 in BAdd.bigi predT (fun j => p.[j] * ZqRing.exp zroot ((br (ii + 128)) * j)) 0 256
   else let ii = i %/ 2 in BAdd.bigi predT (fun j => p.[j] * ZqRing.exp (-zroot) ((br (ii + 128)) * j)) 0 256) axiomatized by nttE.
 
-op invntt(p : poly) : poly.
-(* = Array256.init (fun i => 
+op invntt(p : poly) : poly = Array256.init (fun i => 
   if i %% 2  = 0 
-  then let ii = i %/ 2 in BAdd.bigi predT (fun j => inv (incoeff 128) * p.[2*j]   * ZqRing.exp zroot (-((2 * br j + 1) * ii))) 0 128
-  else let ii = i %/ 2 in BAdd.bigi predT (fun j => inv (incoeff 128) * p.[2*j+1] * ZqRing.exp zroot (-((2 * br j + 1) * ii))) 0 128) axiomatized by invnttE. *)
+  then let ii = i %/ 2 in BAdd.bigi predT (fun j => inv (incoeff 256) * p.[2*j]   * ZqRing.exp zroot (-((2 * br j + 1) * ii))) 0 256
+  else let ii = i %/ 2 in BAdd.bigi predT (fun j => inv (incoeff 256) * p.[2*j+1] * ZqRing.exp zroot (-((2 * br j + 1) * ii))) 0 256) axiomatized by invnttE. 
 
 (* The base multiplication in the NTT domain pointwise. *)
 
 op basemul(a b : poly) :  poly = Array256.init (fun i => a.[i] * b.[i]).
 
+op poly_Power2Round(p : poly) : poly * poly = 
+     (Array256.of_list witness (unzip1 (to_list (map Power2Round p))),
+      Array256.of_list witness (unzip2 (to_list (map Power2Round p)))).
+
+op poly_UseHint(h : poly, r : poly) : poly = 
+     Array256.init (fun ii => UseHint (!h.[ii] = Zq.zero) r.[ii]).
+
+op poly_MakeHint(p1 : poly, p2 : poly) : poly = 
+     Array256.init (fun ii => incoeff (b2i (MakeHint p1.[ii] p2.[ii]))).

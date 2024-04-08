@@ -2,8 +2,7 @@ require import AllCore.
 require import IntDiv.
 require import ZModP Ring.
 
-op q : int = 8380417 axiomatized by qE.
-axiom prime_q : prime q.
+require import Parameters.
 
 clone import ZModField as Zq with 
   op p <- q 
@@ -17,16 +16,12 @@ op as_sint(x : coeff) = if (q-1) %/ 2 < asint x then asint x - q else asint x.
 
 abbrev absZq (x: coeff): int = `| as_sint x |.
 
-op d : int = 13.
-op gamma1 : int = 2^19.
-op gamma2 : int = (q - 1) %/ 32.
-
 op smod(n d : int) : int = if (d %/2 < n %% d) then n %% d - d else n %%d.
 
-op Power2Round(x : coeff) : int * int = 
+op Power2Round(x : coeff) : coeff * coeff = 
     let rplus = asint x in
     let rzero = smod rplus 2^d
-    in ((rplus - rzero) %/ 2^d,rzero).
+    in (incoeff ((rplus - rzero) %/ 2^d), incoeff rzero).
 
 op Decompose(r : coeff) : int * int = 
    let rplus = asint r in
@@ -44,12 +39,12 @@ op MakeHint(z r : coeff) : bool =
    let v1 = HighBits(r+z) in
       r1 <> v1.
 
-op UseHint(h : bool, r : coeff) : int = 
+op UseHint(h : bool, r : coeff) : coeff = 
     let m = (q-1) %/ (2*gamma2) in
     let (r1,r0) = Decompose r in
     if h && 0 < r0
-    then (r1 + 1) %% m
+    then incoeff ((r1 + 1) %% m)
     else if (h && r0 <= 0)
-         then (r1 - 1) %% m
-         else r1.
+         then incoeff ((r1 - 1) %% m)
+         else incoeff r1.
 
