@@ -1,18 +1,30 @@
 require import Rq.
 
+(* We have k x l matrices *)
 op kvec : int = 6. 
 op lvec : int = 5.
 
-theory PolyVec.
-type polyvec.
-op "_.[_]" (v : polyvec) (i : int) : poly.
-op "_.[_<-_]" (v : polyvec) (i : int) (c : poly) : polyvec.
-op mapv(f : poly -> poly, v : polyvec) : polyvec.
+theory PolyLVec.
+type polylvec.
+op "_.[_]" (v : polylvec) (i : int) : poly.
+op "_.[_<-_]" (v : polylvec) (i : int) (c : poly) : polylvec.
+op mapv(f : poly -> poly, v : polylvec) : polylvec.
 op nttv v = mapv ntt v.
 op invnttv v = mapv invntt v.
-op zerov : polyvec.
-op (+) : polyvec -> polyvec -> polyvec.
-end PolyVec.
+op zerov : polylvec.
+op (+) : polylvec -> polylvec -> polylvec.
+end PolyLVec.
+
+theory PolyKVec.
+type polykvec.
+op "_.[_]" (v : polykvec) (i : int) : poly.
+op "_.[_<-_]" (v : polykvec) (i : int) (c : poly) : polykvec.
+op mapv(f : poly -> poly, v : polykvec) : polykvec.
+op nttv v = mapv ntt v.
+op invnttv v = mapv invntt v.
+op zerov : polykvec.
+op (+) : polykvec -> polykvec -> polykvec.
+end PolyKVec.
 
 theory PolyMat.
 type polymat.
@@ -24,7 +36,7 @@ op invnttm m = mapm invntt m.
 op zerom : polymat. 
 end PolyMat.
 
-import PolyVec PolyMat.
+import PolyLVec PolyKVec PolyMat.
 
 (*
 op ntt_mmul(m : polymat, v : polyvec) : polyvec = 

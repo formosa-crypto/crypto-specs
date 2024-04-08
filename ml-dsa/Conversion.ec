@@ -6,10 +6,11 @@ require import Array256.
 require import GFq.
 require import Rq.
 require import VecMat.
-import PolyVec.
+import PolyLVec.
+import PolyKVec.
 import PolyMat.
 
-op Eta : int = 2.
+op Eta : int = 4.
 
 op IntegerToBits(x alpha : int) : bool list = BS2Int.int2bs alpha x. 
 op BitsToInteger(y : bool list) : int = BS2Int.bs2int y.
@@ -50,7 +51,7 @@ op BitUnpack(v : W8.t list, a b : int) : poly =
 op w_hint = 55.
 
 module HintPackUnpack = {
-   proc hintBitPack(h : polyvec) : W8.t list = {
+   proc hintBitPack(h : polykvec) : W8.t list = {
      var index : int;
      var y : W8.t list;
      var i,j;
@@ -72,8 +73,8 @@ module HintPackUnpack = {
      return y;
    }
 
-   proc hintBitUnpack(y : W8.t list) : polyvec option = {
-     var h : polyvec;
+   proc hintBitUnpack(y : W8.t list) : polykvec option = {
+     var h : polykvec;
      var index : int;
      var error : bool;
      var i;
