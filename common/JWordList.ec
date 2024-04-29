@@ -75,8 +75,8 @@ move=> Hn; rewrite /chunk.
 have ->: (size (take (size l %/ n * n) l) %/ n) = (size l %/ n).
  rewrite size_take'; first smt(size_ge0).
  by rewrite lez_floor 1:/# /= mulzK 1:/#.
-apply eq_in_mkseq => x Hx /=.
-rewrite -{1}(cat_take_drop (size l %/ n * n)).
+apply eq_in_mkseq => x Hx /=. 
+rewrite -(cat_take_drop (size l %/ n * n) l).
 rewrite drop_cat size_take'; first smt(size_ge0).
 rewrite lez_floor 1:/# /= mulzC StdOrder.IntOrder.ltr_pmul2r 1:/#.
 move: (Hx); move=> [? ->] /=.
@@ -86,7 +86,7 @@ have E: n <= size (drop (x * n) (take (size l %/ n * n) l)).
   by rewrite -{1}mulz1 {1}mulzC StdOrder.IntOrder.ler_pmul2r // -ltzS /#.
  rewrite size_take' 1:/# lez_floor 1:/# /=.
  smt(size_ge0).
-by rewrite take_cat' E.
+by rewrite take_cat' E /= cat_take_drop /=.
 qed.
 
 lemma map_chunkK ['a] (f:'a list -> 'a list) n bs:

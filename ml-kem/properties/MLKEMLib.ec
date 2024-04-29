@@ -77,7 +77,7 @@ by smt(from_int_floor).
 lemma frac_halfP x:
  frac x = inv 2%r => frac (2%r*x) = 0%r.
 proof.
-move => E; rewrite floor_frac_eq mulrDr.
+move => E; rewrite (floor_frac_eq x) /= mulrDr.
 by rewrite -fromintM fracDz E divrr // from_int_frac.
 qed.
 
