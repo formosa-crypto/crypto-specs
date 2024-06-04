@@ -22,7 +22,7 @@ op SHA3_512_64_64 (x y: W8.t Array32.t): W8.t Array32.t * W8.t Array32.t =
 op SHAKE128_ABSORB_34 (x: W8.t Array32.t) (i j: W8.t): W64.t Array25.t =
  SHAKE128_ABSORB (to_list x ++ [i; j]).
 op SHAKE128_SQUEEZE_168 (st: W64.t Array25.t): W64.t Array25.t *  W8.t Array168.t =
- let (st', l) = SHAKE128_SQUEEZE_BLOCK st in (st', Array168.of_list W8.zero l).
+ let (st', l) = SHAKE128_SQUEEZEBLOCK st in (st', Array168.of_list W8.zero l).
 
 op SHAKE256_64_32 (x y: W8.t Array32.t): W8.t Array32.t =
  Array32.of_list W8.zero (SHAKE256 (to_list x ++ to_list y) 32).

@@ -8,9 +8,49 @@ require import EclibExtra.
 (* TODO: cleanup!!! *)
 
 require BitEncoding.
-import BitEncoding.BitChunking.
+import BitEncoding.BitChunking BitEncoding.BS2Int.
 require import StdOrder.
 import IntOrder.
+
+
+lemma bs2int_take k bs:
+ 0 <= k =>
+ bs2int (take k bs) = bs2int bs %% 2^k.
+proof.
+move=> Hk.
+case: (k < size bs) => Hbs.
+ rewrite -{2}(cat_take_drop k bs) bs2int_cat.
+ rewrite size_take 1:// Hbs /=. 
+ rewrite mulzC modzMDr modz_small //.
+ split; first by apply bs2int_ge0.
+ move=> _; move: (bs2int_le2Xs (take k bs)).
+ by rewrite size_take 1:// Hbs /= /#.
+rewrite take_oversize 1:/# modz_small //.
+split; first by apply bs2int_ge0.
+move=> _; move: (bs2int_le2Xs bs).
+by move: (ler_weexpn2l 2 _ (size bs) k _); smt(size_ge0).
+qed.
+
+lemma bs2int_drop k bs:
+ 0 <= k =>
+ bs2int (drop k bs) = bs2int bs %/ 2^k.
+proof.
+move=> Hk.
+case: (k < size bs) => Hbs.
+ rewrite -{2}(cat_take_drop k bs) bs2int_cat.
+ rewrite size_take 1:// Hbs /= mulzC divzMDr.
+  smt(gt0_pow2).
+ rewrite divz_small //.
+ split; first by apply bs2int_ge0.
+ move=> _; move: (bs2int_le2Xs (take k bs)).
+ by rewrite size_take 1:// Hbs /= /#.
+rewrite drop_oversize 1:/# bs2int_nil divz_small //.
+split; first by apply bs2int_ge0.
+move=> _; move: (bs2int_le2Xs bs).
+by move: (ler_weexpn2l 2 _ (size bs) k _); smt(size_ge0).
+qed.
+
+
 
 lemma chunk0 ['a] n (l: 'a list):
  size l < n =>
@@ -75,8 +115,8 @@ move=> Hn; rewrite /chunk.
 have ->: (size (take (size l %/ n * n) l) %/ n) = (size l %/ n).
  rewrite size_take'; first smt(size_ge0).
  by rewrite lez_floor 1:/# /= mulzK 1:/#.
-apply eq_in_mkseq => x Hx /=. 
-rewrite -(cat_take_drop (size l %/ n * n) l).
+apply eq_in_mkseq => x Hx /=.
+rewrite -{1}(cat_take_drop (size l %/ n * n) l).
 rewrite drop_cat size_take'; first smt(size_ge0).
 rewrite lez_floor 1:/# /= mulzC StdOrder.IntOrder.ltr_pmul2r 1:/#.
 move: (Hx); move=> [? ->] /=.
@@ -86,7 +126,7 @@ have E: n <= size (drop (x * n) (take (size l %/ n * n) l)).
   by rewrite -{1}mulz1 {1}mulzC StdOrder.IntOrder.ler_pmul2r // -ltzS /#.
  rewrite size_take' 1:/# lez_floor 1:/# /=.
  smt(size_ge0).
-by rewrite take_cat' E /= cat_take_drop /=.
+by rewrite take_cat' E.
 qed.
 
 lemma map_chunkK ['a] (f:'a list -> 'a list) n bs:
@@ -292,9 +332,7 @@ move => n_gt0 Hsz0.
  rewrite -{1}(cat_take_drop n l).
 case: (size l < n) => Hsz.
  by rewrite !drop_oversize 1:/# cats0 take_oversize 1:/# chunkify_nil chunkifyE // chunk0 /#.
-rewrite chunkify_cat ?size_take 1..2:/#.
-+ case (n = size l);smt().
-rewrite chunkify_chunk // ?size_take' 1..2:/# chunk_size 1:/#. 
+rewrite chunkify_cat ?size_take' 1..3:/# chunkify_chunk // ?size_take' 1..2:/# chunk_size 1:/#. 
  by rewrite size_take' /#.
 smt().
 qed.
@@ -855,7 +893,9 @@ rewrite chunkpadE ?n_gt0 //.
 case: (n %| size xs) => C.
  have ->: size xs = n by smt().
  by rewrite /= nseq0.
-by congr; case(n = size xs); smt(). 
+congr; rewrite modz_small //.
+have: !n=size xs by smt(divzz).
+smt(size_ge0).
 qed.
 
 lemma SSSs_from_TTTsK_dvd l:
