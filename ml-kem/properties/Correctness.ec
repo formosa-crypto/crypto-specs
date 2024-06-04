@@ -31,7 +31,10 @@ lemma as_sint_bounded x y eps:
  => `| as_sint (x-y) | <= eps.
 proof.
 rewrite !normP; move=> [Hl Hr].
-by rewrite /as_sint;smt(incoeffN incoeffK asintK).
+rewrite /as_sint.
+case: ((q - 1) %/ 2 < asint (x - y)%BigDom.CR) => C.
+ smt(incoeffN incoeffK asintK).
+smt(incoeffN incoeffK asintK).
 qed.
 
 abbrev absZq (x: coeff): int = `| as_sint x |.
@@ -176,9 +179,7 @@ have L: forall y m, 0 <= y <= m => y %% m = 0 <=> y=0 \/ y=m.
  by rewrite modz_small /#.
 rewrite Bq1E /compress L.
  by apply comp_asint_range => //= /#.
-rewrite absZqP qE /= -fromintM round_divz 1:/# /=; congr.
- smt.
-smt.
+by rewrite absZqP qE /= -fromintM round_divz 1:/# /=; smt(rg_asint).
 qed.
 
 lemma decompress0 d:
@@ -1429,7 +1430,17 @@ rewrite /parse; congr.
 smt(enough_blocksE).
 qed.
 
-
+lemma parse_sem _st _rho _i _j:
+ _st = SHAKE128_ABSORB_34 _rho _i _j => 
+ phoare [ Parse(XOF).sample
+        : XOF.state = _st ==> res = parse (_rho,_i,_j) ] = 1%r.
+proof.
+move=> Est.
+conseq (parse_corr _rho _i _j) (sampleFilter_sem _rho _i _j).
+ move => &1 /> .
+ by exists (_rho,_i,_j); smt().
+smt().
+qed.
 
 import PolyMat.
 module Hmodule = {
