@@ -924,6 +924,20 @@ qed.
 op rejection l =
  map incoeff (filter (fun x => x<q) (bytes2coeffs l)).
 
+op rejection16 l =
+ map (fun x => W16.of_int (asint x)) (rejection l).
+
+lemma rejection16E l:
+ rejection16 l
+ = map W16.of_int (filter (fun x => x<q) (bytes2coeffs l)).
+proof.
+rewrite /rejection16 /rejection -map_comp /(\o) /=.
+apply eq_in_map => x /mem_filter /= [Hx /mapP [n [_ Hn]]].
+rewrite to_uint_eq !of_uintK modz_small incoeffK 1:/#.
+rewrite modz_small; first smt(bs2int_ge0).
+by rewrite modz_small; first smt(bs2int_ge0).
+qed.
+
 lemma rejection0: rejection [] = [].
 proof. by rewrite /rejection bytes2coeffs_nil. qed.
 
@@ -954,7 +968,6 @@ apply (ler_trans (size (bytes2coeffs l))).
  by apply size_filter_le.
 by rewrite size_bytes2coeffs /#.
 qed.
-
 
 (** [expand_seed] expands a seed to a given number of blocks... *)
 abbrev rejection_seed (seed: W8.t Array32.t * W8.t * W8.t) =
@@ -1099,17 +1112,17 @@ module ParseFilter = {
 
 
 (** [plist p n] is the list "[p.[0]; ...; p.[n-1]]" *)
-op plist (pol: poly) n = mkseq ("_.[_]" pol) n.
+op plist ['a] (pol: 'a Array256.t) n = mkseq ("_.[_]" pol) n.
 
-lemma plist0 p: plist p 0 = [].
+lemma plist0 ['a] (p: 'a Array256.t): plist p 0 = [].
 proof. by rewrite /plist mkseq0. qed.
 
-lemma plistS p k:
+lemma plistS ['a] (p: 'a Array256.t) k:
  0 <= k =>
  plist p (k+1) = rcons (plist p k) p.[k].
 proof. by move=> Hk; rewrite /plist mkseqS. qed.
 
-lemma take_plist p (n n': int):
+lemma take_plist ['a] (p: 'a Array256.t) (n n': int):
  0 <= n' <= n =>
  take (n') (plist p n) = plist p n'.
 proof.
@@ -1118,24 +1131,25 @@ by rewrite take_mkseq 1:/# //.
 qed.
 
 (** updates a list [l] in [p] (at position [k]) *)
-op pupdl (p:poly) l k =
+op pupdl ['a] (p: 'a Array256.t) l k =
  with l="[]" => p
  with l=x::xs => pupdl p.[k<-x] xs (k+1).
 
-lemma pupdl_nil p k: pupdl p [] k = p by done.
+lemma pupdl_nil ['a] (p: 'a Array256.t)  k:
+ pupdl p [] k = p by done.
 
-lemma pupdl_cons p x xs k:
+lemma pupdl_cons ['a] (p: 'a Array256.t) x xs k:
  pupdl p (x::xs) k = pupdl p.[k<-x] xs (k+1)
 by done.
 
-lemma pupdl_cat p k l1 l2:
+lemma pupdl_cat ['a] (p: 'a Array256.t) k l1 l2:
  pupdl p (l1++l2) k = pupdl (pupdl p l1 k) l2 (k+size l1).
 proof.
 elim: l1 p k => //= x xs IH p k.
 by rewrite IH addzA.
 qed.
 
-lemma plist_upd_out (p:poly) (k i:int) x:
+lemma plist_upd_out ['a] (p: 'a Array256.t) (k i:int) x:
  k <= i < 256 =>
  plist p.[i <- x] k = plist p k.
 proof.
@@ -1144,7 +1158,7 @@ apply eq_in_mkseq => j Hj.
 by rewrite get_setE 1:/# ifF 1:/#.
 qed.
 
-lemma plist_pupdl p l k:
+lemma plist_pupdl ['a] (p: 'a Array256.t) l k:
  0 <= k && k + size l <= 256 =>
  plist (pupdl p l k) (k+size l) = plist p k ++ l.
 proof.
