@@ -970,10 +970,10 @@ by rewrite size_bytes2coeffs /#.
 qed.
 
 (** [expand_seed] expands a seed to a given number of blocks... *)
-abbrev rejection_seed (seed: W8.t Array32.t * W8.t * W8.t) =
- to_list seed.`1 ++ [seed.`2; seed.`3].
+abbrev rejection_seed (seed: W8.t Array32.t * (W8.t * W8.t)) =
+ to_list seed.`1 ++ [seed.`2.`1; seed.`2.`2].
 
-op expand_seed (seed: W8.t Array32.t * W8.t * W8.t) nb =
+op expand_seed (seed: W8.t Array32.t * (W8.t * W8.t)) nb =
  SHAKE128_SQUEEZEBLOCKS (SHAKE128_ABSORB (rejection_seed seed)) nb. 
 
 lemma size_expand_seed m nb:
@@ -1014,7 +1014,7 @@ proof. by rewrite size_takel' /#. qed.
  as specified in Kyber terminates.
  (c.f. https://eprint.iacr.org/2023/708)
 *)
-axiom kyber_terminates (seed: W8.t Array32.t * W8.t * W8.t):
+axiom kyber_terminates (seed: W8.t Array32.t * (W8.t * W8.t)):
  exists nblocks, enough_blocks seed nblocks.
 
 
@@ -1057,21 +1057,25 @@ qed.
 op parse_coeffs seed: coeff list =
  take 256 (rejection (expand_seed seed (needed_blocks seed))).
 
-op parse seed = Array256.of_list witness (parse_coeffs seed).
+op parse rho i j =
+ Array256.of_list witness (parse_coeffs (rho, (i,j))).
 
 lemma size_parse_coeffs m: size (parse_coeffs m) = 256.
 proof.
 by rewrite size_takel //=; apply needed_blocksP.
 qed.
 
+op matidxs (pos: int) (t: bool) =
+ let xy = (W8.of_int (pos %/ 3), W8.of_int (pos %% 3)) in
+ if t then (xy.`2, xy.`1) else xy.
 
 module ParseFilter = {
-  proc sample(rho: W8.t Array32.t, i j: W8.t) : poly = {
+  proc sample(rho: W8.t Array32.t, ij: W8.t*W8.t) : poly = {
     var st, buf;
     var c, k;
     var l, p;
 
-    st <- SHAKE128_ABSORB (rejection_seed (rho,i,j));
+    st <- SHAKE128_ABSORB (rejection_seed (rho,ij));
     p <- [];
     c <- 0;
     k <- 0;
@@ -1084,12 +1088,12 @@ module ParseFilter = {
     }
     return Array256.of_list witness p;
   }
-  proc sample3buf(rho: W8.t Array32.t, i j: W8.t) : poly = {
+  proc sample3buf(rho: W8.t Array32.t, ij: W8.t*W8.t) : poly = {
     var st, buf, tmp;
     var c, k;
     var l, p;
 
-    st <- SHAKE128_ABSORB (rejection_seed (rho,i,j));
+    st <- SHAKE128_ABSORB (rejection_seed (rho,ij));
     p <- [];
     (st, buf) <- SHAKE128_SQUEEZEBLOCK st;
     (st, tmp) <- SHAKE128_SQUEEZEBLOCK st;
@@ -1107,6 +1111,94 @@ module ParseFilter = {
       k <- k + 1;
     }
     return Array256.of_list witness p;
+  }
+  (* 4-way sampling (AVX2) *)
+  proc sample3buf_x4'(rho: W8.t Array32.t, pos: int, t: bool) : poly*poly*poly*poly = {
+    var p0, p1, p2, p3;
+    p0 <@ sample(rho, matidxs pos t);
+    pos <- pos + 1;
+    p1 <@ sample(rho, matidxs pos t);
+    pos <- pos + 1;
+    p2 <@ sample(rho, matidxs pos t);
+    pos <- pos + 1;
+    p3 <@ sample(rho, matidxs pos t);
+    return (p0, p1, p2, p3);
+  }
+  proc sample3buf_x4(rho: W8.t Array32.t, pos: int, t:bool) : poly*poly*poly*poly = {
+    var st0, st1, st2, st3, buf0, buf1, buf2, buf3, tmp;
+    var c;
+    var l, p0, p1, p2, p3;
+
+    p0 <- [];
+    p1 <- [];
+    p2 <- [];
+    p3 <- [];
+
+    st0 <- SHAKE128_ABSORB (rejection_seed (rho, matidxs pos t));
+    pos <- pos + 1;
+    st1 <- SHAKE128_ABSORB (rejection_seed (rho, matidxs pos t));
+    pos <- pos + 1;
+    st2 <- SHAKE128_ABSORB (rejection_seed (rho, matidxs pos t));
+    pos <- pos + 1;
+    st3 <- SHAKE128_ABSORB (rejection_seed (rho, matidxs pos t));
+
+    (st0, buf0) <- SHAKE128_SQUEEZEBLOCK st0;
+    (st0, tmp) <- SHAKE128_SQUEEZEBLOCK st0;
+    buf0 <- buf0 ++ tmp;
+    (st0, tmp) <- SHAKE128_SQUEEZEBLOCK st0;
+    buf0 <- buf0 ++ tmp;
+    (st1, buf1) <- SHAKE128_SQUEEZEBLOCK st1;
+    (st1, tmp) <- SHAKE128_SQUEEZEBLOCK st1;
+    buf1 <- buf1 ++ tmp;
+    (st1, tmp) <- SHAKE128_SQUEEZEBLOCK st1;
+    buf1 <- buf1 ++ tmp;
+    (st2, buf2) <- SHAKE128_SQUEEZEBLOCK st2;
+    (st2, tmp) <- SHAKE128_SQUEEZEBLOCK st2;
+    buf2 <- buf2 ++ tmp;
+    (st2, tmp) <- SHAKE128_SQUEEZEBLOCK st2;
+    buf2 <- buf2 ++ tmp;
+    (st3, buf3) <- SHAKE128_SQUEEZEBLOCK st3;
+    (st3, tmp) <- SHAKE128_SQUEEZEBLOCK st3;
+    buf3 <- buf3 ++ tmp;
+    (st3, tmp) <- SHAKE128_SQUEEZEBLOCK st3;
+    buf3 <- buf3 ++ tmp;
+
+    p0 <- take 256 (rejection buf0);
+    c <- size p0;
+    while (c < 256) {
+      (st0, buf0) <- SHAKE128_SQUEEZEBLOCK st0;
+      l <- take (256-c) (rejection buf0);
+      c <- c + size l;
+      p0 <- p0 ++ l;
+    }
+
+    p1 <- take 256 (rejection buf1);
+    c <- size p1;
+    while (c < 256) {
+      (st1, buf1) <- SHAKE128_SQUEEZEBLOCK st1;
+      l <- take (256-c) (rejection buf1);
+      c <- c + size l;
+      p1 <- p1 ++ l;
+    }
+
+    p2 <- take 256 (rejection buf2);
+    c <- size p2;
+    while (c < 256) {
+      (st2, buf2) <- SHAKE128_SQUEEZEBLOCK st2;
+      l <- take (256-c) (rejection buf2);
+      c <- c + size l;
+      p2 <- p2 ++ l;
+    }
+
+    p3 <- take 256 (rejection buf3);
+    c <- size p3;
+    while (c < 256) {
+      (st3, buf3) <- SHAKE128_SQUEEZEBLOCK st3;
+      l <- take (256-c) (rejection buf3);
+      c <- c + size l;
+      p3 <- p3 ++ l;
+    }
+    return (Array256.of_list witness p0, Array256.of_list witness p1, Array256.of_list witness p2, Array256.of_list witness p3);
   }
 }.
 
@@ -1227,7 +1319,7 @@ qed.
 equiv parse_corr _rho _i _j:
  Parse(XOF).sample ~ ParseFilter.sample
  : XOF.state{1}=SHAKE128_ABSORB_34 _rho _i _j 
-   /\ (rho,i,j){2}=(_rho,_i,_j) 
+   /\ (rho,ij){2}=(_rho,(_i,_j)) 
  ==> ={res}.
 proof.
 proc.
@@ -1355,7 +1447,7 @@ equiv sample_sample3buf:
 proof.
 proc.
 splitwhile {1} 5: (k < 3).
-seq 5 10: (={rho, i, j, st, p, k, c} /\ k{2}=3).
+seq 5 10: (={rho, ij, st, p, k, c} /\ k{2}=3).
  unroll {1} 5; rcondt {1} 5; first by auto.
  unroll {1} 10; rcondt {1} 10.
   move=> &m; auto => />.
@@ -1389,11 +1481,11 @@ by sim.
 qed.
 
 phoare sampleFilter_sem _rho _i _j: 
- [ ParseFilter.sample : rho=_rho /\ i =_i /\ j=_j ==> 
-   res = parse (_rho,_i,_j) ] = 1%r.
+ [ ParseFilter.sample : rho=_rho /\ ij.`1 =_i /\ ij.`2=_j ==> 
+   res = parse _rho _i _j ] = 1%r.
 proof.
 proc; simplify.
-pose _m := (_rho,_i,_j).
+pose _m := (_rho,(_i,_j)).
 pose _st := SHAKE128_ABSORB (rejection_seed _m).
 pose _nb := needed_blocks _m.
 have Hnb := needed_blocksP _m.
@@ -1424,7 +1516,7 @@ while (p = take 256 (rejection (SHAKE128_SQUEEZEBLOCKS _st k))
    smt(size_take_le).
   by rewrite size_cat /#.
  smt().
-auto => />; split.
+auto => /> &m *;  split.
  split.
   rewrite /squeezeblocks iota0 1:// /= flatten_nil.
   by rewrite /rejection /bytes2coeffs /chunk mkseq0.
@@ -1447,13 +1539,63 @@ qed.
 lemma parse_sem _st _rho _i _j:
  _st = SHAKE128_ABSORB_34 _rho _i _j => 
  phoare [ Parse(XOF).sample
-        : XOF.state = _st ==> res = parse (_rho,_i,_j) ] = 1%r.
+        : XOF.state = _st ==> res = parse _rho _i _j ] = 1%r.
 proof.
 move=> Est.
 conseq (parse_corr _rho _i _j) (sampleFilter_sem _rho _i _j).
  move => &1 /> .
- by exists (_rho,_i,_j); smt().
+ by exists (_rho,(_i,_j)); smt().
 smt().
+qed.
+
+equiv sampleX4_sample3buf_4x:
+ ParseFilter.sample3buf_x4 ~ ParseFilter.sample3buf_x4'
+ : ={arg} ==> ={res}.
+proof.
+proc; simplify.
+transitivity {2}
+ { p0 <@ ParseFilter.sample3buf(rho, matidxs pos t);
+   pos <- pos + 1;
+   p1 <@ ParseFilter.sample3buf(rho, matidxs pos t);
+   pos <- pos + 1;
+   p2 <@ ParseFilter.sample3buf(rho, matidxs pos t);
+   pos <- pos + 1;
+   p3 <@ ParseFilter.sample3buf(rho, matidxs pos t);
+ }
+ ( ={rho, pos, t} ==> (of_list witness p0{1})%Array256 = p0{2} /\
+  (of_list witness p1{1})%Array256 = p1{2} /\
+  (of_list witness p2{1})%Array256 = p2{2} /\
+  (of_list witness p3{1})%Array256 = p3{2} )
+ ( ={rho, pos, t} ==> ={p0, p1, p2, p3} ); last first.
+* symmetry. 
+  call sample_sample3buf.
+  wp; call sample_sample3buf.
+  wp; call sample_sample3buf.
+  by wp; call sample_sample3buf.
+* by move=> &1 &2 /> /#.
+* by move=> &1 &m &2 /> /#.
+swap {1} [6..11] 5.
+swap {1} [13..16] 5.
+swap {1} [20..21] 5.
+swap {1} [11..31] 3.
+swap {1} [21..34] 3.
+swap {1} [31..37] 3.
+seq 13 1: (#pre /\ (of_list witness p0{1})%Array256 = p0{2}).
+ by inline *; wp; sim; auto.
+seq 10 2: (#pre /\ (of_list witness p1{1})%Array256 = p1{2}).
+ inline *; wp; simplify.
+ while (#pre /\ (c,st1,buf1,p1){1}=(c,st,buf,p){2}).
+  by auto => />.
+ by auto => />.
+seq 10 2: (#pre /\ (of_list witness p2{1})%Array256 = p2{2}).
+ inline *; wp; simplify.
+ while (#pre /\ (c,st2,buf2,p2){1}=(c,st,buf,p){2}).
+  by auto => />.
+ by auto => />.
+inline *; wp; simplify.
+while (#pre /\ (c,st3,buf3,p3){1}=(c,st,buf,p){2}).
+ by auto => />.
+by auto => />.
 qed.
 
 import PolyMat.
