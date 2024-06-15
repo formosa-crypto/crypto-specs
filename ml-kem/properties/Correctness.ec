@@ -1066,7 +1066,7 @@ by rewrite size_takel //=; apply needed_blocksP.
 qed.
 
 
-abbrev idx_from_pos pos = (pos %/ 3, pos %% 3).
+abbrev idx_from_pos pos = (pos %% 3, pos %/ 3).
 
 op matidxs (pos: int) (t: bool): W8.t*W8.t =
  let xy = idx_from_pos pos  in
