@@ -16,11 +16,11 @@ rewrite (floorE (x+floor y)) //.
 smt(floor_bound).
 qed.
 
-lemma nosmt le_floorE n x:
+lemma le_floorE n x:
  (n <= floor x) = (n%r <= x)
 by smt(floor_bound).
 
-lemma nosmt floor_ltE x n:
+lemma floor_ltE x n:
  (floor x < n) = (x < n%r)
 by smt(floor_bound).
 
@@ -138,16 +138,16 @@ lemma round_bound x:
  x - inv(2%r) < (round x)%r <= x + inv(2%r)
 by smt(floor_bound).
 
-lemma nosmt le_roundE n x:
+lemma le_roundE n x:
  (n <= round x) = (n%r <= x + inv 2%r)
 by smt(le_floorE).
 
-lemma nosmt round_ltE x n:
+lemma round_ltE x n:
  (round x < n) = (x + inv 2%r < n%r)
 by smt(floor_ltE).
 
 
-lemma nosmt roundN x:
+lemma roundN x:
  frac x <> inv 2%r => round (-x) = -round x.
 proof.
 move => H.

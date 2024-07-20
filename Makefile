@@ -2,6 +2,7 @@
 
 # --------------------------------------------------------------------
 ECCONF := config/tests.config 
+JOBS   ?= 1
 CHECKS ?= specs
 
 # --------------------------------------------------------------------
@@ -10,7 +11,7 @@ CHECKS ?= specs
 default: check
 
 check:
-	easycrypt runtest $(ECCONF) $(CHECKS)
+	easycrypt runtest -jobs $(JOBS) $(ECCONF) $(CHECKS)
 
 clean_eco:
-	find kyber768 -name '*.eco' -exec rm '{}' ';'
+	find . -name '*.eco' -exec rm '{}' ';'
