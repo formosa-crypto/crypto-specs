@@ -51,7 +51,7 @@ by smt(rg_asint).
 (* Compress-error bound *)
 op Bq d = round (q%r / (2^(d+1))%r).
 
-lemma nosmt Bq_le_half d:
+lemma  Bq_le_half d:
  0 < d =>
  (q%r / (2^(d+1))%r) <= (q-1)%r/2%r.
 proof.
@@ -63,7 +63,7 @@ rewrite (RField.mulrC (2%r)) invrM;1,2:by smt(lt_pow expr_gt0).
 by rewrite RField.mulrC (RField.mulrA (q%r)) (RField.mulrC (q%r)) !RField.mulrA /#.
 qed.
 
-lemma nosmt dvdzN_q_2d (d: int):
+lemma  dvdzN_q_2d (d: int):
  0 < d =>
  q %% 2^d <> 0.
 proof.
@@ -76,7 +76,7 @@ move: (IH HHd); apply contra.
 by rewrite -!dvdzE /#.
 qed.
 
-lemma nosmt Bq_noties d:
+lemma  Bq_noties d:
  0 < d =>
  2^d < q =>
  frac (q%r / (2 ^ (d + 1))%r) <> inv 2%r.
@@ -91,24 +91,24 @@ rewrite !mulrA divrr //= frac_div_eq0.
 by apply dvdzN_q_2d.
 qed.
 
-lemma nosmt Bq1E: Bq 1 = 832
+lemma  Bq1E: Bq 1 = 832
 by rewrite /Bq /= round_divz 1:// qE.
 
-lemma nosmt Bq4E: Bq 4 = 104
+lemma  Bq4E: Bq 4 = 104
 by rewrite /Bq /= round_divz 1:// qE.
 
 (* Compression and decompression are used as operations between 
    polynomials over coeff, but we first define the basic operations 
    over coefficients. *)
 
-lemma nosmt comp_bound d x:
+lemma  comp_bound d x:
  0 < d =>
  2^d < q =>
  x * (2 ^ d)%r / q%r - inv 2%r
  < (comp d x)%r <= x * (2 ^ d)%r / q%r + inv 2%r.
 proof. smt(round_bound). qed.
 
-lemma nosmt comp_asint_bound d x:
+lemma  comp_asint_bound d x:
  0 < d =>
  2^d < q =>
  (asint x)%r * (2 ^ d)%r - q%r / 2%r < q%r * (comp d (asint x)%r)%r
@@ -129,7 +129,7 @@ apply (RealOrder.ler_lt_trans ((asint x)%r*(2^d)%r/q%r+ inv 2%r)); first smt(com
 by rewrite RealOrder.ltr_add2r RealOrder.ltr_pmul2r 1:/# RealOrder.ltr_pmul2r; smt(expr_gt0 rg_asint).
 qed.
 
-lemma nosmt comp_over d x:
+lemma  comp_over d x:
  0 < d =>
  2^d < q =>
  comp d (asint x)%r = 2^d
@@ -144,7 +144,7 @@ rewrite RealOrder.ler_subl_addl -RealOrder.ler_subl_addr ler_pdivl_mulr.
 by rewrite exprD_nneg 1..2:/# /= fromintM /#.
 qed.
 
-lemma nosmt compress0L d x:
+lemma  compress0L d x:
  0 < d =>
  2^d < q =>
  q%r - q%r / (2^(d+1))%r <= (asint x)%r =>
@@ -156,7 +156,7 @@ have ->: comp d (asint x)%r = 2^d.
 by rewrite modzz.
 qed.
 
-lemma nosmt compress_small d x:
+lemma  compress_small d x:
  0 < d =>
  2^d < q =>
  (asint x)%r < q%r - q%r / (2^(d+1))%r =>
@@ -170,7 +170,7 @@ have ?: comp d (asint x)%r <> 2^d by rewrite comp_over // /#.
 smt(comp_asint_range).
 qed.
 
-lemma nosmt compress1_is0 x:
+lemma  compress1_is0 x:
  compress 1 x = 0 <=> absZq x <= Bq 1.
 proof.
 have L: forall y m, 0 <= y <= m => y %% m = 0 <=> y=0 \/ y=m.
