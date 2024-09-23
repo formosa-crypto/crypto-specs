@@ -51,7 +51,7 @@ by smt(rg_asint).
 (* Compress-error bound *)
 op Bq d = round (q%r / (2^(d+1))%r).
 
-lemma nosmt Bq_le_half d:
+lemma Bq_le_half d:
  0 < d =>
  (q%r / (2^(d+1))%r) <= (q-1)%r/2%r.
 proof.
@@ -63,7 +63,7 @@ rewrite (RField.mulrC (2%r)) invrM;1,2:by smt(lt_pow expr_gt0).
 by rewrite RField.mulrC (RField.mulrA (q%r)) (RField.mulrC (q%r)) !RField.mulrA /#.
 qed.
 
-lemma nosmt dvdzN_q_2d (d: int):
+lemma dvdzN_q_2d (d: int):
  0 < d =>
  q %% 2^d <> 0.
 proof.
@@ -76,7 +76,7 @@ move: (IH HHd); apply contra.
 by rewrite -!dvdzE /#.
 qed.
 
-lemma nosmt Bq_noties d:
+lemma Bq_noties d:
  0 < d =>
  2^d < q =>
  frac (q%r / (2 ^ (d + 1))%r) <> inv 2%r.
@@ -91,24 +91,24 @@ rewrite !mulrA divrr //= frac_div_eq0.
 by apply dvdzN_q_2d.
 qed.
 
-lemma nosmt Bq1E: Bq 1 = 832
+lemma Bq1E: Bq 1 = 832
 by rewrite /Bq /= round_divz 1:// qE.
 
-lemma nosmt Bq4E: Bq 4 = 104
+lemma Bq4E: Bq 4 = 104
 by rewrite /Bq /= round_divz 1:// qE.
 
 (* Compression and decompression are used as operations between 
    polynomials over coeff, but we first define the basic operations 
    over coefficients. *)
 
-lemma nosmt comp_bound d x:
+lemma comp_bound d x:
  0 < d =>
  2^d < q =>
  x * (2 ^ d)%r / q%r - inv 2%r
  < (comp d x)%r <= x * (2 ^ d)%r / q%r + inv 2%r.
 proof. smt(round_bound). qed.
 
-lemma nosmt comp_asint_bound d x:
+lemma comp_asint_bound d x:
  0 < d =>
  2^d < q =>
  (asint x)%r * (2 ^ d)%r - q%r / 2%r < q%r * (comp d (asint x)%r)%r
@@ -129,7 +129,7 @@ apply (RealOrder.ler_lt_trans ((asint x)%r*(2^d)%r/q%r+ inv 2%r)); first smt(com
 by rewrite RealOrder.ltr_add2r RealOrder.ltr_pmul2r 1:/# RealOrder.ltr_pmul2r; smt(expr_gt0 rg_asint).
 qed.
 
-lemma nosmt comp_over d x:
+lemma comp_over d x:
  0 < d =>
  2^d < q =>
  comp d (asint x)%r = 2^d
@@ -144,7 +144,7 @@ rewrite RealOrder.ler_subl_addl -RealOrder.ler_subl_addr ler_pdivl_mulr.
 by rewrite exprD_nneg 1..2:/# /= fromintM /#.
 qed.
 
-lemma nosmt compress0L d x:
+lemma compress0L d x:
  0 < d =>
  2^d < q =>
  q%r - q%r / (2^(d+1))%r <= (asint x)%r =>
@@ -156,7 +156,7 @@ have ->: comp d (asint x)%r = 2^d.
 by rewrite modzz.
 qed.
 
-lemma nosmt compress_small d x:
+lemma compress_small d x:
  0 < d =>
  2^d < q =>
  (asint x)%r < q%r - q%r / (2^(d+1))%r =>
@@ -170,7 +170,7 @@ have ?: comp d (asint x)%r <> 2^d by rewrite comp_over // /#.
 smt(comp_asint_range).
 qed.
 
-lemma nosmt compress1_is0 x:
+lemma compress1_is0 x:
  compress 1 x = 0 <=> absZq x <= Bq 1.
 proof.
 have L: forall y m, 0 <= y <= m => y %% m = 0 <=> y=0 \/ y=m.
@@ -1057,22 +1057,21 @@ qed.
 op parse_coeffs seed: coeff list =
  take 256 (rejection (expand_seed seed (needed_blocks seed))).
 
-op parse rho i j =
- Array256.of_list witness (parse_coeffs (rho, (i,j))).
+op parse rho j i =
+ Array256.of_list witness (parse_coeffs (rho, (j,i))).
 
 lemma size_parse_coeffs m: size (parse_coeffs m) = 256.
 proof.
 by rewrite size_takel //=; apply needed_blocksP.
 qed.
 
+abbrev idx_from_pos pos = ((* row *) pos %/ 3, (* column *) pos %% 3).
 
-abbrev idx_from_pos pos = (pos %% 3, pos %/ 3).
+op pos2ji (pos: int) (t: bool): W8.t*W8.t =
+ let rc = idx_from_pos pos  in
+ if t then (W8.of_int rc.`1, W8.of_int rc.`2) else (W8.of_int rc.`2, W8.of_int rc.`1).
 
-op matidxs (pos: int) (t: bool): W8.t*W8.t =
- let xy = idx_from_pos pos  in
- if t then (W8.of_int xy.`2, W8.of_int xy.`1) else (W8.of_int xy.`1, W8.of_int xy.`2).
-
-op mat4atPos m pos =
+op m4atPos m pos =
  ( m.[idx_from_pos pos]
  , m.[idx_from_pos (pos+1)]
  , m.[idx_from_pos (pos+2)]
@@ -1080,12 +1079,12 @@ op mat4atPos m pos =
  ).
 
 module ParseFilter = {
-  proc sample(rho: W8.t Array32.t, i: W8.t, j: W8.t) : poly = {
+  proc sample(rho: W8.t Array32.t, j: W8.t, i: W8.t) : poly = {
     var st, buf;
     var c, k;
     var l, p;
 
-    st <- SHAKE128_ABSORB (rejection_seed (rho,(i,j)));
+    st <- SHAKE128_ABSORB (rejection_seed (rho,(j,i)));
     p <- [];
     c <- 0;
     k <- 0;
@@ -1098,12 +1097,39 @@ module ParseFilter = {
     }
     return Array256.of_list witness p;
   }
-  proc sample3buf(rho: W8.t Array32.t, ij: W8.t*W8.t) : poly = {
+  proc fill_poly(buf: W8.t list, st: state): poly = {
+    var p, c, k, l;
+    k <- 3;
+    p <- take 256 (rejection buf);
+    c <- size p;
+    while (c < 256) {
+      (st, buf) <- SHAKE128_SQUEEZEBLOCK st;
+      l <- take (256-c) (rejection buf);
+      c <- c + size l;
+      p <- p ++ l;
+      k <- k + 1;
+    }
+    return Array256.of_list witness p;
+  }
+  proc sample3buf(rho: W8.t Array32.t, ji: W8.t*W8.t) : poly = {
+    var st, buf, tmp;
+    var p';
+
+    st <- SHAKE128_ABSORB (rejection_seed (rho,ji));
+    (st, buf) <- SHAKE128_SQUEEZEBLOCK st;
+    (st, tmp) <- SHAKE128_SQUEEZEBLOCK st;
+    buf <- buf ++ tmp;
+    (st, tmp) <- SHAKE128_SQUEEZEBLOCK st;
+    buf <- buf ++ tmp;
+    p' <@ fill_poly(buf, st);
+    return p';
+  }
+  proc sample3bufX(rho: W8.t Array32.t, ji: W8.t*W8.t) : poly = {
     var st, buf, tmp;
     var c, k;
     var l, p;
 
-    st <- SHAKE128_ABSORB (rejection_seed (rho,ij));
+    st <- SHAKE128_ABSORB (rejection_seed (rho,ji));
     p <- [];
     (st, buf) <- SHAKE128_SQUEEZEBLOCK st;
     (st, tmp) <- SHAKE128_SQUEEZEBLOCK st;
@@ -1126,20 +1152,100 @@ module ParseFilter = {
   proc sample3buf_x4'(rho: W8.t Array32.t, pos: int, t: bool) : poly*poly*poly*poly = {
     var p0, p1, p2, p3;
     var i, j;
-    ( i, j ) <- matidxs pos t;
-    p0 <@ sample(rho, i, j);
+    ( j, i ) <- pos2ji pos t;
+    p0 <@ sample(rho, j, i);
     pos <- pos + 1;
-    ( i, j ) <- matidxs pos t;
-    p1 <@ sample(rho, i, j);
+    ( j, i ) <- pos2ji pos t;
+    p1 <@ sample(rho, j, i);
     pos <- pos + 1;
-    ( i, j ) <- matidxs pos t;
-    p2 <@ sample(rho, i, j);
+    ( j, i ) <- pos2ji pos t;
+    p2 <@ sample(rho, j, i);
     pos <- pos + 1;
-    ( i, j ) <- matidxs pos t;
-    p3 <@ sample(rho, i, j);
+    ( j, i ) <- pos2ji pos t;
+    p3 <@ sample(rho, j, i);
     return (p0, p1, p2, p3);
   }
   proc sample3buf_x4(rho: W8.t Array32.t, pos: int, t:bool) : poly*poly*poly*poly = {
+    var st0, st1, st2, st3, buf0, buf1, buf2, buf3, tmp0, tmp1, tmp2, tmp3;
+    var p0, p1, p2, p3;
+
+    st0 <- SHAKE128_ABSORB (rejection_seed (rho, pos2ji pos t));
+    pos <- pos + 1;
+    st1 <- SHAKE128_ABSORB (rejection_seed (rho, pos2ji pos t));
+    pos <- pos + 1;
+    st2 <- SHAKE128_ABSORB (rejection_seed (rho, pos2ji pos t));
+    pos <- pos + 1;
+    st3 <- SHAKE128_ABSORB (rejection_seed (rho, pos2ji pos t));
+
+    (st0, buf0) <- SHAKE128_SQUEEZEBLOCK st0;
+    (st1, buf1) <- SHAKE128_SQUEEZEBLOCK st1;
+    (st2, buf2) <- SHAKE128_SQUEEZEBLOCK st2;
+    (st3, buf3) <- SHAKE128_SQUEEZEBLOCK st3;
+
+    (st0, tmp0) <- SHAKE128_SQUEEZEBLOCK st0;
+    buf0 <- buf0 ++ tmp0;
+    (st1, tmp1) <- SHAKE128_SQUEEZEBLOCK st1;
+    buf1 <- buf1 ++ tmp1;
+    (st2, tmp2) <- SHAKE128_SQUEEZEBLOCK st2;
+    buf2 <- buf2 ++ tmp2;
+    (st3, tmp3) <- SHAKE128_SQUEEZEBLOCK st3;
+    buf3 <- buf3 ++ tmp3;
+
+    (st0, tmp0) <- SHAKE128_SQUEEZEBLOCK st0;
+    buf0 <- buf0 ++ tmp0;
+    (st1, tmp1) <- SHAKE128_SQUEEZEBLOCK st1;
+    buf1 <- buf1 ++ tmp1;
+    (st2, tmp2) <- SHAKE128_SQUEEZEBLOCK st2;
+    buf2 <- buf2 ++ tmp2;
+    (st3, tmp3) <- SHAKE128_SQUEEZEBLOCK st3;
+    buf3 <- buf3 ++ tmp3;
+
+    p0 <@ fill_poly(buf0, st0);
+    p1 <@ fill_poly(buf1, st1);
+    p2 <@ fill_poly(buf2, st2);
+    p3 <@ fill_poly(buf3, st3);
+    return (p0,p1,p2,p3);
+  }
+  proc sample3buf_x4X(rho: W8.t Array32.t, pos: int, t:bool) : poly*poly*poly*poly = {
+    var st0, st1, st2, st3, buf0, buf1, buf2, buf3, tmp;
+    var p0, p1, p2, p3;
+
+    st0 <- SHAKE128_ABSORB (rejection_seed (rho, pos2ji pos t));
+    pos <- pos + 1;
+    st1 <- SHAKE128_ABSORB (rejection_seed (rho, pos2ji pos t));
+    pos <- pos + 1;
+    st2 <- SHAKE128_ABSORB (rejection_seed (rho, pos2ji pos t));
+    pos <- pos + 1;
+    st3 <- SHAKE128_ABSORB (rejection_seed (rho, pos2ji pos t));
+
+    (st0, buf0) <- SHAKE128_SQUEEZEBLOCK st0;
+    (st0, tmp) <- SHAKE128_SQUEEZEBLOCK st0;
+    buf0 <- buf0 ++ tmp;
+    (st0, tmp) <- SHAKE128_SQUEEZEBLOCK st0;
+    buf0 <- buf0 ++ tmp;
+    (st1, buf1) <- SHAKE128_SQUEEZEBLOCK st1;
+    (st1, tmp) <- SHAKE128_SQUEEZEBLOCK st1;
+    buf1 <- buf1 ++ tmp;
+    (st1, tmp) <- SHAKE128_SQUEEZEBLOCK st1;
+    buf1 <- buf1 ++ tmp;
+    (st2, buf2) <- SHAKE128_SQUEEZEBLOCK st2;
+    (st2, tmp) <- SHAKE128_SQUEEZEBLOCK st2;
+    buf2 <- buf2 ++ tmp;
+    (st2, tmp) <- SHAKE128_SQUEEZEBLOCK st2;
+    buf2 <- buf2 ++ tmp;
+    (st3, buf3) <- SHAKE128_SQUEEZEBLOCK st3;
+    (st3, tmp) <- SHAKE128_SQUEEZEBLOCK st3;
+    buf3 <- buf3 ++ tmp;
+    (st3, tmp) <- SHAKE128_SQUEEZEBLOCK st3;
+    buf3 <- buf3 ++ tmp;
+
+    p0 <@ fill_poly(buf0, st0);
+    p1 <@ fill_poly(buf1, st1);
+    p2 <@ fill_poly(buf2, st2);
+    p3 <@ fill_poly(buf3, st3);
+    return (p0,p1,p2,p3);
+  }
+  proc sample3buf_x4XX(rho: W8.t Array32.t, pos: int, t:bool) : poly*poly*poly*poly = {
     var st0, st1, st2, st3, buf0, buf1, buf2, buf3, tmp;
     var c;
     var l, p0, p1, p2, p3;
@@ -1149,13 +1255,13 @@ module ParseFilter = {
     p2 <- [];
     p3 <- [];
 
-    st0 <- SHAKE128_ABSORB (rejection_seed (rho, matidxs pos t));
+    st0 <- SHAKE128_ABSORB (rejection_seed (rho, pos2ji pos t));
     pos <- pos + 1;
-    st1 <- SHAKE128_ABSORB (rejection_seed (rho, matidxs pos t));
+    st1 <- SHAKE128_ABSORB (rejection_seed (rho, pos2ji pos t));
     pos <- pos + 1;
-    st2 <- SHAKE128_ABSORB (rejection_seed (rho, matidxs pos t));
+    st2 <- SHAKE128_ABSORB (rejection_seed (rho, pos2ji pos t));
     pos <- pos + 1;
-    st3 <- SHAKE128_ABSORB (rejection_seed (rho, matidxs pos t));
+    st3 <- SHAKE128_ABSORB (rejection_seed (rho, pos2ji pos t));
 
     (st0, buf0) <- SHAKE128_SQUEEZEBLOCK st0;
     (st0, tmp) <- SHAKE128_SQUEEZEBLOCK st0;
@@ -1331,10 +1437,10 @@ rewrite /to_list drop_mkseq 1:/# take_mkseq 1:/#.
 by rewrite /mkseq -iotaredE /(\o) /=.
 qed.
 
-equiv parse_corr _rho _i _j:
+equiv parse_corr _rho _j _i:
  Parse(XOF).sample ~ ParseFilter.sample
- : XOF.state{1}=SHAKE128_ABSORB_34 _rho _i _j 
-   /\ (rho,(i,j)){2}=(_rho,(_i,_j)) 
+ : XOF.state{1}=SHAKE128_ABSORB_34 _rho _j _i 
+   /\ (rho,(j,i)){2}=(_rho,(_j,_i)) 
  ==> ={res}.
 proof.
 proc.
@@ -1458,11 +1564,12 @@ qed.
 
 equiv sample_sample3buf:
  ParseFilter.sample ~ ParseFilter.sample3buf
- : (rho,(i,j)){1}=arg{2} ==> ={res}.
+ : (rho,(j,i)){1}=arg{2} ==> ={res}.
 proof.
 proc.
 splitwhile {1} 5: (k < 3).
-seq 5 10: (={rho, st, p, k, c} /\ (i,j){1}=ij{2} /\ k{2}=3).
+inline fill_poly.
+seq 5 11: (={rho, p, k, c} /\ (st,(j,i)){1}=(st0,ji){2} /\ k{2}=3).
  unroll {1} 5; rcondt {1} 5; first by auto.
  unroll {1} 10; rcondt {1} 10.
   move=> &m; auto => />.
@@ -1492,15 +1599,17 @@ seq 5 10: (={rho, st, p, k, c} /\ (i,j){1}=ij{2} /\ k{2}=3).
  split.
   by congr; smt(). 
  by rewrite ?size_cat /#.
-by sim.
+wp; while (={c,p,k} /\ st{1}=st0{2}).
+ by auto.
+by auto => />.
 qed.
 
-phoare sampleFilter_sem _rho _i _j: 
+phoare sampleFilter_sem _rho _j _i: 
  [ ParseFilter.sample : rho=_rho /\ i =_i /\ j=_j ==> 
-   res = parse _rho _i _j ] = 1%r.
+   res = parse _rho _j _i ] = 1%r.
 proof.
 proc; simplify.
-pose _m := (_rho,(_i,_j)).
+pose _m := (_rho,(_j,_i)).
 pose _st := SHAKE128_ABSORB (rejection_seed _m).
 pose _nb := needed_blocks _m.
 have Hnb := needed_blocksP _m.
@@ -1551,15 +1660,20 @@ rewrite /parse; congr.
 smt(enough_blocksE).
 qed.
 
-lemma parse_sem _st _rho _i _j:
- _st = SHAKE128_ABSORB_34 _rho _i _j => 
+hoare sampleFilter_sem_h _rho _j _i: 
+ ParseFilter.sample 
+ : rho=_rho /\ i =_i /\ j=_j ==>  res = parse _rho _j _i.
+proof. by conseq (sampleFilter_sem _rho _j _i). qed.
+
+lemma parse_sem _st _rho _j _i:
+ _st = SHAKE128_ABSORB_34 _rho _j _i => 
  phoare [ Parse(XOF).sample
-        : XOF.state = _st ==> res = parse _rho _i _j ] = 1%r.
+        : XOF.state = _st ==> res = parse _rho _j _i ] = 1%r.
 proof.
 move=> Est.
-conseq (parse_corr _rho _i _j) (sampleFilter_sem _rho _i _j).
+conseq (parse_corr _rho _j _i) (sampleFilter_sem _rho _j _i).
  move => &1 /> .
- by exists (_rho,_i,_j); smt().
+ by exists (_rho,_j,_i); smt().
 smt().
 qed.
 
@@ -1569,18 +1683,15 @@ equiv sampleX4_sample3buf_4x:
 proof.
 proc; simplify.
 transitivity {2}
- { p0 <@ ParseFilter.sample3buf(rho, matidxs pos t);
+ { p0 <@ ParseFilter.sample3buf(rho, pos2ji pos t);
    pos <- pos + 1;
-   p1 <@ ParseFilter.sample3buf(rho, matidxs pos t);
+   p1 <@ ParseFilter.sample3buf(rho, pos2ji pos t);
    pos <- pos + 1;
-   p2 <@ ParseFilter.sample3buf(rho, matidxs pos t);
+   p2 <@ ParseFilter.sample3buf(rho, pos2ji pos t);
    pos <- pos + 1;
-   p3 <@ ParseFilter.sample3buf(rho, matidxs pos t);
+   p3 <@ ParseFilter.sample3buf(rho, pos2ji pos t);
  }
- ( ={rho, pos, t} ==> (of_list witness p0{1})%Array256 = p0{2} /\
-  (of_list witness p1{1})%Array256 = p1{2} /\
-  (of_list witness p2{1})%Array256 = p2{2} /\
-  (of_list witness p3{1})%Array256 = p3{2} )
+ ( ={rho, pos, t} ==> ={p0, p1, p2, p3} ) 
  ( ={rho, pos, t} ==> ={p0, p1, p2, p3} ); last first.
 * symmetry. 
   call sample_sample3buf.
@@ -1590,28 +1701,25 @@ transitivity {2}
   by auto => /> /#.
 * by move=> &1 &2 /> /#.
 * by move=> &1 &m &2 /> /#.
-swap {1} [6..11] 5.
-swap {1} [13..16] 5.
-swap {1} [20..21] 5.
-swap {1} [11..31] 3.
-swap {1} [21..34] 3.
-swap {1} [31..37] 3.
-seq 13 1: (#pre /\ (of_list witness p0{1})%Array256 = p0{2}).
- by inline *; wp; sim; auto.
-seq 10 2: (#pre /\ (of_list witness p1{1})%Array256 = p1{2}).
- inline *; wp; simplify.
- while (#pre /\ (c,st1,buf1,p1){1}=(c,st,buf,p){2}).
-  by auto => />.
- by auto => />.
-seq 10 2: (#pre /\ (of_list witness p2{1})%Array256 = p2{2}).
- inline *; wp; simplify.
- while (#pre /\ (c,st2,buf2,p2){1}=(c,st,buf,p){2}).
-  by auto => />.
- by auto => />.
-inline *; wp; simplify.
-while (#pre /\ (c,st3,buf3,p3){1}=(c,st,buf,p){2}).
- by auto => />.
-by auto => />.
+swap {1} 8 -6.
+swap {1} 9 -4.
+swap {1} 10 -2.
+swap {1} [12..13] -9.
+swap {1} [14..15] -6.
+swap {1} [16..17] -3.
+swap {1} [20..21] -15.
+swap {1} [22..23] -10.
+swap {1} [24..25] -5.
+swap {1} 28 -21.
+swap {1} 29 -14.
+swap {1} 30 -7.
+seq 7 1: (#pre /\ ={p0}).
+ by inline sample3buf; wp; sim; auto.
+seq 8 2: (#pre /\ ={p1}).
+ by inline sample3buf; wp; sim; auto.
+seq 8 2: (#pre /\ ={p2}).
+ by inline sample3buf; wp; sim; auto.
+by inline sample3buf; wp; sim; auto.
 qed.
 
 import PolyMat.
@@ -1667,7 +1775,7 @@ import KMatrix.Matrix.
 equiv H_sem_equiv : 
  Hmodule.sampleAT  ~ Hmodule.sampleA : ={arg} ==> res{1} = trmx res{2}.
 proof. 
-proc. 
+proc.
 inline XOF.init.
 unroll for {1} 3;unroll for {2} 3.
 unroll for {1} 10; unroll for {2} 10.
@@ -1691,7 +1799,7 @@ op sampleA(sd : W8.t Array32.t) : polymat =
         .[2, 0 <- parse sd W8.zero (W8.of_int 2)]
         .[2, 1 <- parse sd W8.one (W8.of_int 2)]
         .[2, 2 <- parse sd (W8.of_int 2) (W8.of_int 2)].
-   
+
 lemma sampleA_sem _sd :
    phoare [ Hmodule.sampleA : arg = _sd ==> res = sampleA _sd ] = 1%r.
 proc. 
