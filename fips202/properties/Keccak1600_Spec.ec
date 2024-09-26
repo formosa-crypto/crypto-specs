@@ -1316,8 +1316,8 @@ module XOF_statefull_RAWSHAKE256: XOF_t = {
 
 (** equivalence of both APIs are established by the following invariant *)
 
-op inv_XOF (f: bytes -> state) (gI: bytes*int) (gS: state) =
- 0 <= gI.`2 /\ gS = st_i (f gI.`1) gI.`2.
+op inv_XOF (f: bytes -> state) (gI: int*bytes) (gS: state) =
+ 0 <= gI.`1 /\ gS = st_i (f gI.`2) gI.`1.
 
 op inv_XOF_SHAKE128 = inv_XOF SHAKE128_ABSORB.
 
