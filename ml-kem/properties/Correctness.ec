@@ -1324,8 +1324,13 @@ module ParseFilter = {
 }.
 
 
-(** [plist p n] is the list "[p.[0]; ...; p.[n-1]]" *)
+(** [plist p n] is the list "[p.[0]; ...; p.[n-1]]" (obs: "plist p n = sub p 0 n"!) *)
 op plist ['a] (pol: 'a Array256.t) n = mkseq ("_.[_]" pol) n.
+
+lemma size_plist ['a] (pol : 'a Array256.t) n:
+ 0 <= n <= 256 =>
+ size (plist pol n) = n.
+proof. by move=> Hn; rewrite size_mkseq /#. qed.
 
 lemma plist0 ['a] (p: 'a Array256.t): plist p 0 = [].
 proof. by rewrite /plist mkseq0. qed.
