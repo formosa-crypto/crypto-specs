@@ -1782,10 +1782,10 @@ equiv H_sem_equiv :
 proof. 
 proc.
 inline XOF.init.
-unroll for {1} 3;unroll for {2} 3.
-unroll for {1} 10; unroll for {2} 10.
-unroll for {1} 7; unroll for {2} 7.
-unroll for {1} 4; unroll for {2} 4.
+unroll for* {1} 3;unroll for* {2} 3.
+unroll for* {1} 10; unroll for* {2} 10.
+unroll for* {1} 7; unroll for* {2} 7.
+unroll for* {1} 4; unroll for* {2} 4.
 auto => /> &2. 
 apply eq_matrixP => i j rng.
 have rnji := mrangeL _ _ rng.
@@ -1809,7 +1809,7 @@ lemma sampleA_sem _sd :
    phoare [ Hmodule.sampleA : arg = _sd ==> res = sampleA _sd ] = 1%r.
 proc. 
 inline *.
-do 4!(unroll for ^while).
+do 4!(unroll for* ^while).
 auto => />.
 qed.
 
