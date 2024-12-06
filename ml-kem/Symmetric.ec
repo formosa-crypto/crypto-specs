@@ -1,7 +1,7 @@
 (* General EC imports *)
 require import AllCore List.
 from Jasmin require import JModel.
-require import Array25 Array32 Array64 Array128 Array168 Array256 Array960 Array1152.
+require import Array25 Array32 Array33 Array64 Array128 Array168 Array256 Array960 Array1152.
 
 require import Keccak1600_Spec.
 
@@ -11,7 +11,7 @@ op SHAKE_256_1120_32 (x: W8.t Array32.t, y: W8.t Array960.t * W8.t Array128.t): 
 op SHA3_256_1184_32 (x: W8.t Array1152.t * W8.t Array32.t): W8.t Array32.t =
  Array32.of_list W8.zero (SHA3_256 (to_list x.`1 ++ to_list x.`2)).
 
-op SHA3_512_32_64 (x: W8.t Array32.t): W8.t Array32.t * W8.t Array32.t =
+op SHA3_512_33_64 (x: W8.t Array33.t): W8.t Array32.t * W8.t Array32.t =
  let l = SHA3_512 (to_list x)
  in (Array32.of_list W8.zero (take 32 l), Array32.of_list W8.zero (drop 32 l)).
 
@@ -30,7 +30,7 @@ op SHAKE256_33_128 (x: W8.t Array32.t, tag: W8.t): W8.t Array128.t =
  Array128.of_list W8.zero (SHAKE256 (to_list x ++ [tag]) 128).
 
 
-op G_coins = SHA3_512_32_64.
+op G_coins = SHA3_512_33_64.
 op G_mhpk  = SHA3_512_64_64.
 
 op H_pk  = SHA3_256_1184_32.
