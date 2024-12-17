@@ -146,14 +146,13 @@ conseq (: _ ==> keccak_theta_spec _A res).
 proc.
 swap 2 2.
 seq 3: (#pre /\ c = keccak_C _A).
- unroll for* 3.
- unroll for* 21; unroll for* 17; unroll for* 13; unroll for* 9; unroll for* 5; auto => /> .
+ do 6! unroll for ^while.
+ auto => />.
  by rewrite -ext_eq_all /all_eq /keccak_C /idx /invidx /=.
 seq 3: (#pre /\ d = keccak_D c).
- unroll for* 3; auto => />.
+ unroll for 3; auto => />.
  by rewrite -ext_eq_all /all_eq /keccak_D /idx /invidx /=; smt(W64.xorwC).
-unroll for* 2.
-unroll for* 15; unroll for* 12; unroll for* 9; unroll for* 6; unroll for* 3.
+do 6! unroll for ^while.
 wp; skip => &m E @/keccak_theta_spec @/idx /=.
 by rewrite -iotaredE /= /#.
 qed.
