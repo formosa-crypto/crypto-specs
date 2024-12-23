@@ -966,8 +966,8 @@ equiv cbdspec_correct (PRF <: PseudoRF):
 proc => /=. 
 seq 2 2 : (#pre /\ ={rr,bytes});1: by call(_: true);auto => />.
 swap {2}1 1.
-unroll for {1} ^while;
-unroll for {2} ^while;
+unroll for* {1} ^while;
+unroll for* {2} ^while;
 sim; auto =>/> &2;
 have H : forall i, 0<=i<1024 => (nth false (BytesToBits (to_list bytes{2})) i) = 
                    bytes{2}.[i%/8].[i%%8]; last by rewrite !H //=.

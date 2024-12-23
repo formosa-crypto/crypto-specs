@@ -54,6 +54,11 @@ apply eq_foldl => //.
 by rewrite -nth0_head nth_drop /#.
 qed.
 
+lemma size_take_min ['a] n (s: 'a list):
+ 0 <= n =>
+ size (take n s) = min n (size s).
+proof. by move=> Hn; rewrite size_take. qed.
+
 (* a variant of [size_take] that is more convenient in some cases *)
 lemma size_take' ['a] n (s: 'a list):
  0 <= n => size (take n s) = if n <= size s then n else size s.
@@ -77,10 +82,50 @@ case: (n <= size s1) => H.
 by rewrite (: ! n < size s1) /#.
 qed.
 
+lemma take_catX ['a] (n : int) (s1 s2 : 'a list):
+    take n (s1 ++ s2) = take n s1 ++ take (n - size s1) s2.
+proof.
+rewrite take_cat.
+case: (n < size s1) => C.
+ by rewrite (take_le0 (n-size s1)) 1:/# cats0.
+by rewrite (take_oversize n) // /#.
+qed.
+
 (* likewise for [take_take] *)
 lemma take_take' n1 n2 (l: 'a list):
  take n1 (take n2 l) = take (min n1 n2) l.
 proof. elim: l n1 n2 => //= x xs IH n1 n2; smt(). qed.
+
+lemma size_take_le_size ['a] n (l: 'a list):
+ 0 <= n =>
+ size (take n l) <= size l.
+proof. by move=> H; rewrite size_take // /#. qed.
+
+(* a stronger variant of [size_takel] *)
+lemma size_takel' ['a] n (s: 'a list):
+ size (take n s) = n <=> 0 <= n <= size s.
+proof.
+elim: s n => //=.
+ smt().
+move=> x xs IH n.
+case: (n <= 0) => //=.
+ by move=> Hn; split; smt(size_ge0).
+by move=> Hn; move: (IH (n-1)) => /#.
+qed.
+
+lemma size_take_lt ['a] n (s: 'a list):
+ size (take n s) < n <=> size s < n.
+proof.
+split => H; have ?: 0 <= n by smt(size_ge0).
+ move: H; rewrite size_take // /#.
+move: H; rewrite size_take // /#.
+qed.
+
+lemma size_filter_le ['a] (p: 'a -> bool) (l: 'a list):
+ size (filter p l) <= size l.
+proof.
+by rewrite size_filter count_size.
+qed.
 
 (* likewise for [size_flatten] (uniform inner lists) *)
 lemma size_flatten' ['a] sz (ss: 'a list list):
@@ -157,8 +202,9 @@ case: (0 <= i && i < size l) => C.
 by rewrite !nth_out; smt(size_map).
 qed.
 
-(* TO JUtils *)
+(* TO JUtils ?? *)
 from Jasmin require import JUtils.
+
 lemma map2_nilr ['a, 'b, 'c] (f : 'a -> 'b -> 'c) l:
  map2 f l [] = [].
 proof.

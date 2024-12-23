@@ -133,31 +133,42 @@ op stateabsorb_last (r8: int, m: bytes, trail: byte) st: state =
  addratebit r8 (stateabsorb st (rcons m trail)).
 
 (* Full absorb function *)
-op ABSORB1600 (r8: int, m: bytes, trail: byte): state =
+op ABSORB1600 (trail: byte, r8: int, m: bytes): state =
  stateabsorb_last r8 (chunkremains r8 m) trail (stateabsorb_iblocks (chunk r8 m) st0).
 
 (* Squeezes [len] bytes from [st] *)
-op statesqueeze (st: state) (len: int) =
+op squeezestate (st: state) (len: int) =
  take len (state2bytes st).
 
-op statesqueeze_i r8 st i =
- statesqueeze (st_i st (i+1)) r8.
+(* ith-block squeeze *)
+op squeezestate_i r8 st i =
+ squeezestate (st_i st (i+1)) r8.
+
+(* incremental squeeze *)
+abbrev st_squeeze r8 st = (st_i st 1, squeezestate_i r8 st 0).
+
+(* Squeezes [nb] blocks *)
+op squeezeblocks r8 st nb =
+ flatten (map (squeezestate_i r8 st) (iota_ 0 nb)).
 
 (* Full squeeze of [outlen8] bytes *)
-op SQUEEZE1600 (r8: int, st: state, outlen8: int): bytes =
- take outlen8 
-      (flatten (map (statesqueeze_i r8 st) (iota_ 0 ((outlen8-1) %/ r8 + 1)))).
+op SQUEEZE1600 (r8: int, outlen8: int, st: state): bytes =
+ take outlen8 (squeezeblocks r8 st ((outlen8-1) %/ r8 + 1)).
 
 (* The Sponge construction *)
 op KECCAK1600 (r8: int, m: bytes, trail: byte, outlen8: int): bytes =
- SQUEEZE1600 r8 (ABSORB1600 r8 m trail) outlen8.
+ SQUEEZE1600 r8 outlen8 (ABSORB1600 trail r8 m).
 
 
 (** DOMAIN-SEPARATION bits *)
 (* Remark: DS_BYTE includes first bit of [pad10star1] *)
-op SHA_DS_BYTE = W8.of_int 06.
+op SHA3_DS_BYTE = W8.of_int 06.
 op SHAKE_DS_BYTE = W8.of_int 31.
 op RAWSHAKE_DS_BYTE = W8.of_int 07.
+
+abbrev SHA3_ABSORB = ABSORB1600 SHA3_DS_BYTE.
+abbrev SHAKE_ABSORB = ABSORB1600 SHAKE_DS_BYTE.
+abbrev RAWSHAKE_ABSORB = ABSORB1600 RAWSHAKE_DS_BYTE.
 
 (** (byte-)rates for different capacities *)
 op c256_r8  = 168.
@@ -166,15 +177,40 @@ op c512_r8  = 136.
 op c768_r8  = 104.
 op c1024_r8 = 72.
 
-(* Byte-level functional specification of SHA/SHAKE family *)
+abbrev SHA3_224_ABSORB = SHA3_ABSORB c448_r8.
+abbrev SHA3_224_SQUEEZE = SQUEEZE1600 c448_r8 28.
+abbrev SHA3_256_ABSORB = SHA3_ABSORB c512_r8.
+abbrev SHA3_256_SQUEEZE = SQUEEZE1600 c512_r8 32.
+abbrev SHA3_384_ABSORB = SHA3_ABSORB c768_r8.
+abbrev SHA3_384_SQUEEZE = SQUEEZE1600 c768_r8 48.
+abbrev SHA3_512_ABSORB = SHA3_ABSORB c1024_r8.
+abbrev SHA3_512_SQUEEZE = SQUEEZE1600 c1024_r8 64.
+abbrev SHAKE128_ABSORB = SHAKE_ABSORB c256_r8.
+abbrev SHAKE128_SQUEEZE = SQUEEZE1600 c256_r8.
+abbrev SHAKE128_SQUEEZEBLOCK = st_squeeze c256_r8.
+abbrev SHAKE128_SQUEEZEBLOCKS = squeezeblocks c256_r8.
+abbrev SHAKE256_ABSORB = SHAKE_ABSORB c512_r8.
+abbrev SHAKE256_SQUEEZE = SQUEEZE1600 c512_r8.
+abbrev SHAKE256_SQUEEZEBLOCK = st_squeeze c512_r8.
+abbrev SHAKE256_SQUEEZEBLOCKS= squeezeblocks c512_r8.
+abbrev RAWSHAKE128_ABSORB = RAWSHAKE_ABSORB c256_r8.
+(*abbrev RAWSHAKE128_SQUEEZE = SQUEEZE1600 c256_r8.
+abbrev RAWSHAKE128_SQUEEZEBLOCK = st_squeeze c256_r8.
+abbrev RAWSHAKE128_SQUEEZEBLOCKS = squeezeblocks c256_r8.*)
+abbrev RAWSHAKE256_ABSORB = RAWSHAKE_ABSORB c512_r8.
+(*abbrev RAWSHAKE256_SQUEEZE = SQUEEZE1600 c512_r8.
+abbrev RAWSHAKE256_SQUEEZEBLOCK = st_squeeze c512_r8.
+abbrev RAWSHAKE256_SQUEEZEBLOCKS = squeezeblocks c512_r8.*)
+
+(* Byte-level functional specification of SHA3/SHAKE family *)
 op SHA3_224 (m: bytes): bytes =
- KECCAK1600 c448_r8 m SHA_DS_BYTE 28.
+ KECCAK1600 c448_r8 m SHA3_DS_BYTE 28.
 op SHA3_256 (m: bytes): bytes =
- KECCAK1600 c512_r8 m SHA_DS_BYTE 32.
+ KECCAK1600 c512_r8 m SHA3_DS_BYTE 32.
 op SHA3_384 (m: bytes): bytes =
- KECCAK1600 c768_r8 m SHA_DS_BYTE 48.
+ KECCAK1600 c768_r8 m SHA3_DS_BYTE 48.
 op SHA3_512 (m: bytes): bytes =
- KECCAK1600 c1024_r8 m SHA_DS_BYTE 64.
+ KECCAK1600 c1024_r8 m SHA3_DS_BYTE 64.
 op SHAKE128 (m: bytes, outlen8:int): bytes =
  KECCAK1600 c256_r8 m SHAKE_DS_BYTE outlen8.
 op SHAKE256 (m: bytes, outlen8:int): bytes =
@@ -250,7 +286,7 @@ lemma keccak1600_absorb_opE r r8 m ds_bits ds_byte:
  r = 8*r8 =>
  DS_BYTE_ok ds_bits ds_byte =>
  keccak1600_absorb_op r (bytes_to_bits m ++ ds_bits)
- = keccak_f1600_op (ABSORB1600 r8 m ds_byte).
+ = keccak_f1600_op (ABSORB1600 ds_byte r8 m).
 proof.
 move=> Hr Hr8 [Hdsbits Hdsbyte].
 rewrite /keccak1600_absorb_op /ABSORB1600.
@@ -300,54 +336,72 @@ apply W8.all_eq_eq; rewrite /all_eq /=.
 by rewrite of_intE /int2bs /mkseq -iotaredE /=.
 qed.
 
-lemma size_statesqueeze_i r8 st i:
+lemma size_squeezestate st r8:
  0 < r8 <= 200 =>
- size (statesqueeze_i r8 st i) = r8.
+ size (squeezestate st r8) = r8.
 proof.
-move=> Hr.
-by rewrite /statesqueeze_i /statesqueeze size_take' ?size_state2bytes /#.
+move=> Hr8; rewrite /squeezestate.
+by rewrite size_take' 1:/# size_state2bytes ifT /#.
 qed.
 
-lemma size_flatten_statesqueeze_i r8 st n:
+lemma size_squeezestate_i r8 st i:
+ 0 < r8 <= 200 =>
+ size (squeezestate_i r8 st i) = r8.
+proof.
+move=> Hr.
+by rewrite /squeezestate_i size_squeezestate.
+qed.
+
+lemma size_squeezeblocks r8 st n:
  0 < r8 <= 200 =>
  0 <= n =>
- size (flatten (map (statesqueeze_i r8 st) (iota_ 0 n)))
+ size (squeezeblocks r8 st n)
  = r8 * n.
 proof.
 move=> Hr.
 rewrite (size_flatten' r8).
  move=> x /mapP [y [Hy ->]].
- by rewrite size_statesqueeze_i.
-rewrite size_map size_iota /#.
+ by rewrite size_squeezestate_i.
+by rewrite size_map size_iota /#.
+qed.
+
+lemma squeezeblocksS r8 st n:
+ 0 < r8 <= 200 =>
+ 0 <= n =>
+ squeezeblocks r8 st (n+1) = squeezeblocks r8 st n ++ (st_squeeze r8 (st_i st n)).`2.
+proof.
+move=> Hr8 Hn.
+rewrite /squeezeblocks /st_squeeze /= iotaSr 1:// -cats1 map_cat flatten_cat /=; congr.
+by rewrite /flatten /= cats0 /squeezestate_i /= /st_i iter1 iterS /#.
 qed.
 
 lemma size_SQUEEZE1600 r8 st len8:
  0 < r8 <= 200 =>
  0 <= len8 =>
- size (SQUEEZE1600 r8 st len8) = len8.
+ size (SQUEEZE1600 r8 len8 st) = len8.
 proof.
 move=> Hr Hlen8.
 rewrite size_take' // ifT //.
-by rewrite size_flatten_statesqueeze_i /#.
+by rewrite size_squeezeblocks /#.
 qed.
 
 lemma SQUEEZE1600_iblocks_last r8 st outlen8:
  0 < r8 <= 200 =>
- SQUEEZE1600 r8 st outlen8
+ SQUEEZE1600 r8 outlen8 st
  = (* intermediate blocks *)
-   flatten (map (statesqueeze_i r8 st) (iota_ 0 ((outlen8-1) %/ r8)))
+   flatten (map (squeezestate_i r8 st) (iota_ 0 ((outlen8-1) %/ r8)))
    (* last block *)
-   ++ statesqueeze (st_i st ((outlen8-1) %/ r8 + 1))
+   ++ squeezestate (st_i st ((outlen8-1) %/ r8 + 1))
                    (outlen8 - max 0 ((outlen8-1) %/ r8 * r8)).
 proof.
 move=> Hr; case: (outlen8 <= 0) => C.
  rewrite /SQUEEZE1600 take_le0 // iota0 1:/# /=.
- by rewrite flatten_nil /= /statesqueeze take_le0 /#.
-rewrite /SQUEEZE1600 /statesqueeze_i /statesqueeze.
-rewrite iotaSr 1:/# map_rcons flatten_rcons.
+ by rewrite flatten_nil /= /squeezestate take_le0 /#.
 pose L:= flatten _.
 have Lsz: size L = r8 * ((outlen8 - 1) %/ r8)
- by rewrite size_flatten_statesqueeze_i /#.
+ by rewrite size_squeezeblocks /#.
+rewrite /SQUEEZE1600 /L /squeezeblocks /squeezestate_i /squeezestate.
+rewrite iotaSr 1:/# map_rcons flatten_rcons.
 rewrite take_cat ifF 1:Lsz 1:/# /= take_take'.
 congr; congr.
 by rewrite Lsz /#.
@@ -356,15 +410,15 @@ qed.
 lemma SQUEEZE1600_ext r8 st len1 len2:
  0 < r8 <= 200 =>
  0 <= len1 <= len2 =>
- SQUEEZE1600 r8 st len1
- = take len1 (SQUEEZE1600 r8 st len2).
+ SQUEEZE1600 r8 len1 st
+ = take len1 (SQUEEZE1600 r8 len2 st).
 proof.
 move=> Hr Hlen.
 rewrite take_take' ler_minl 1:/#.
 have ->: (len2-1)%/r8 + 1
  = (len1-1)%/r8 + 1 + ((len2-1)%/r8-(len1-1)%/r8) by smt().
-rewrite iota_add 1..2:/# map_cat flatten_cat.
-by rewrite take_cat' ifT ?size_flatten_statesqueeze_i /#.
+rewrite /squeezeblocks iota_add 1..2:/# map_cat flatten_cat.
+by rewrite take_cat' ifT 1:size_squeezeblocks /#.
 qed.
 
 lemma keccak1600_squeeze_opE r r8 st outlen outlen8:
@@ -372,13 +426,13 @@ lemma keccak1600_squeeze_opE r r8 st outlen outlen8:
  r = 8*r8 =>
  outlen = 8*outlen8 =>
  keccak1600_squeeze_op r (keccak_f1600_op st) outlen
- = bytes_to_bits (SQUEEZE1600 r8 st outlen8).
+ = bytes_to_bits (SQUEEZE1600 r8 outlen8 st).
 proof.
 move=> Hr Hr8 Ho8.
 case: (outlen <= 0) => Hout.
  rewrite /keccak1600_squeeze_op take_le0 1:/# //.
  rewrite SQUEEZE1600_iblocks_last 1:/# iota0 1:/#  flatten_nil /=.
- by rewrite /statesqueeze take_le0 /#.
+ by rewrite /squeezestate take_le0 /#.
 rewrite /keccak1600_squeeze_op /SQUEEZE1600.
 rewrite bytes_to_bits_take -Ho8; congr.
 rewrite bytes_to_bits_flatten; congr.
@@ -386,7 +440,7 @@ have E: (outlen - 1) %/ r = (outlen8-1) %/ r8.
  by rewrite Ho8 mulrC Hr8 divzMr // 1:/# divzMDl //=.
 rewrite E -map_comp.
 apply eq_in_map => x /@mem_iota /> *.
-rewrite /(\o) /= /statesqueeze_i addrC /state_squeeze bytes_to_bits_take; congr.
+rewrite /(\o) /= /squeezestate_i addrC /state_squeeze bytes_to_bits_take; congr.
 rewrite state2bytes2bits; congr.
 by rewrite /st_i addzC iterSr //. 
 qed.
@@ -405,10 +459,10 @@ by apply keccak1600_squeeze_opE => // /#.
 qed.
 
 
-lemma SHA_DS_BYTE_ok:
- DS_BYTE_ok SHA_DS_BITS SHA_DS_BYTE.
+lemma SHA3_DS_BYTE_ok:
+ DS_BYTE_ok SHA_DS_BITS SHA3_DS_BYTE.
 proof.
-rewrite /DS_BYTE_ok /SHA_DS_BYTE /SHA_DS_BITS //=.
+rewrite /DS_BYTE_ok /SHA3_DS_BYTE /SHA_DS_BITS //=.
 apply (W8.all_eq_eq).
 by rewrite /W8.of_int /int2bs /mkseq -iotaredE /all_eq /=.
 qed.
@@ -434,7 +488,7 @@ lemma sha3_224_opE m:
  = bytes_to_bits (SHA3_224 m).
 proof.
 apply keccak1600_opE => //.
-exact SHA_DS_BYTE_ok.
+exact SHA3_DS_BYTE_ok.
 qed.
 
 lemma sha3_256_opE m:
@@ -442,7 +496,7 @@ lemma sha3_256_opE m:
  = bytes_to_bits (SHA3_256 m).
 proof.
 apply keccak1600_opE => //.
-exact SHA_DS_BYTE_ok.
+exact SHA3_DS_BYTE_ok.
 qed.
 
 lemma sha3_384_opE m:
@@ -450,7 +504,7 @@ lemma sha3_384_opE m:
  = bytes_to_bits (SHA3_384 m).
 proof.
 apply keccak1600_opE => //.
-exact SHA_DS_BYTE_ok.
+exact SHA3_DS_BYTE_ok.
 qed.
 
 lemma sha3_512_opE m:
@@ -458,7 +512,7 @@ lemma sha3_512_opE m:
  = bytes_to_bits (SHA3_512 m).
 proof.
 apply keccak1600_opE => //.
-exact SHA_DS_BYTE_ok.
+exact SHA3_DS_BYTE_ok.
 qed.
 
 lemma shake128_opE m outlen outlen8:
@@ -699,10 +753,10 @@ qed.
   (a convenient target for implementation correctness proofs)
 ***************************************************************)
 
-op statesqueeze_block r8 st =
- let st' = keccak_f1600_op st in (st', statesqueeze st' r8).
+op squeezestate_block r8 st =
+ let st' = keccak_f1600_op st in (st', squeezestate st' r8).
 
-op statesqueeze_last st len = statesqueeze (keccak_f1600_op st) len.
+op squeezestate_last st len = squeezestate (keccak_f1600_op st) len.
 
 module Keccak1600Bytes = {
  proc absorb(r8: int, inp: bytes, trail: byte): state = {
@@ -725,11 +779,11 @@ module Keccak1600Bytes = {
    out_bytes <- [];
    i <- 1;
    while (r8*i < outlen) {
-     (st, buf) <- statesqueeze_block r8 st;
+     (st, buf) <- squeezestate_block r8 st;
      out_bytes <- out_bytes ++ buf;  
      i <- i + 1;
    }
-   out_bytes <- out_bytes ++ statesqueeze_last st (outlen - r8*(i-1));
+   out_bytes <- out_bytes ++ squeezestate_last st (outlen - r8*(i-1));
    return out_bytes;
  }
  proc sponge(r8:int, m: bytes, trail: byte, len8: int): bytes = {
@@ -740,22 +794,22 @@ module Keccak1600Bytes = {
  }
  proc sha3_224(m: bytes): bytes = {
    var r;
-   r <@ sponge(c448_r8, m, SHA_DS_BYTE, 28);
+   r <@ sponge(c448_r8, m, SHA3_DS_BYTE, 28);
    return r;
  }
  proc sha3_256(m: bytes): bytes = {
    var r;
-   r <@ sponge(c512_r8, m, SHA_DS_BYTE, 32);
+   r <@ sponge(c512_r8, m, SHA3_DS_BYTE, 32);
    return r;
  }
  proc sha3_384(m: bytes): bytes = {
    var r;
-   r <@ sponge(c768_r8, m, SHA_DS_BYTE, 48);
+   r <@ sponge(c768_r8, m, SHA3_DS_BYTE, 48);
    return r;
  }
  proc sha3_512(m: bytes): bytes = {
    var r;
-   r <@ sponge(c1024_r8, m, SHA_DS_BYTE, 64);
+   r <@ sponge(c1024_r8, m, SHA3_DS_BYTE, 64);
    return r;
  }
  proc shake128(m: bytes, outlen8: int): bytes = {
@@ -781,7 +835,7 @@ module Keccak1600Bytes = {
 }.
 
 hoare ABSORB1600_h _r8 _trail _m:
- Keccak1600Bytes.absorb: r8=_r8 /\ trail=_trail /\ inp=_m /\ 0 < _r8 ==> res = ABSORB1600 _r8 _m _trail.
+ Keccak1600Bytes.absorb: r8=_r8 /\ trail=_trail /\ inp=_m /\ 0 < _r8 ==> res = ABSORB1600 _trail _r8 _m.
 proof.
 proc; simplify.
 sp 1; seq 3: (#pre /\ st = stateabsorb_iblocks l st0).
@@ -820,7 +874,7 @@ qed.
 phoare ABSORB1600_ph _r8 _trail _m:
  [ Keccak1600Bytes.absorb
  : r8=_r8 /\ trail=_trail /\ inp=_m /\ 0 < _r8 
- ==> res = ABSORB1600 _r8 _m _trail
+ ==> res = ABSORB1600 _trail _r8 _m
  ] = 1%r.
 proof. by conseq ABSORB1600_ll (ABSORB1600_h _r8 _trail _m). qed.
 
@@ -828,38 +882,39 @@ hoare SQUEEZE1600_h _r8 _st _len:
  Keccak1600Bytes.squeeze
  : r8=_r8 /\ st=_st /\ outlen=_len 
    /\ 0 < _r8 <= 200
-   ==> res = SQUEEZE1600 _r8 _st _len.
+   ==> res = SQUEEZE1600 _r8 _len _st .
 proof.
 proc; case: (0 < outlen); simplify.
  (* normal case *)
  seq 3: (#[/1,3:]pre /\ 
-         out_bytes = flatten (map (statesqueeze_i _r8 _st) (iota_ 0 ((_len-1) %/ _r8))) /\
+         out_bytes = flatten (map (squeezestate_i _r8 _st) (iota_ 0 ((_len-1) %/ _r8))) /\
          st = st_i _st ((_len-1) %/ _r8) /\
          i = (_len-1) %/ _r8 + 1).
   while (0 < i <= (_len-1) %/ _r8 + 1 /\
          #[/1,3:]pre /\
-         out_bytes = flatten (map (statesqueeze_i _r8 _st) (iota_ 0 (i-1))) /\
+         out_bytes = flatten (map (squeezestate_i _r8 _st) (iota_ 0 (i-1))) /\
          st = st_i _st (i-1)).
    auto => /> &m Hi_1 Hi_2 Hr8_1 Hr8_2 *; split; 1:smt().
-   rewrite /statesqueeze_block /= /st_i -iterS 1:/# /=.
+   rewrite /squeezestate_block /= /st_i -iterS 1:/# /=.
    rewrite {3}(:i{m}=i{m}-1+1) 1:/# iotaSr 1:/# /=.
-   by rewrite map_rcons flatten_rcons /statesqueeze_i /= /#.
+   by rewrite map_rcons flatten_rcons /squeezestate_i /= /#.
   auto => /> *; split. 
    by rewrite iota0 //= flatten_nil /st_i iter0 /#.
   move => /> i???.
   by have ->//=: i=(_len-1)%/_r8+1 by smt().
  auto => /> Hr64_1 Hr64_2 ?.
- rewrite /SQUEEZE1600 /statesqueeze_last.
+ rewrite /SQUEEZE1600 /squeezeblocks /squeezestate_last.
  rewrite iotaSr 1:/# map_rcons flatten_rcons.
- rewrite /statesqueeze_i take_cat ifF.
-  by rewrite size_flatten_statesqueeze_i /#.
- congr; rewrite {1 3}/statesqueeze take_take'; congr.
-  by rewrite size_flatten_statesqueeze_i /#.
+ rewrite /squeezestate_i take_cat ifF.
+  by rewrite size_squeezeblocks /#.
+ congr; rewrite {1 3}/squeezestate take_take'; congr.
+  by rewrite size_squeezeblocks /#.
  by rewrite /st_i iterS /#.
 (* corner case *)
 rcondf 3; first by auto => /> /#.
 auto => /> *.
-by rewrite /SQUEEZE1600 iota0 1:/# flatten_nil /#.
+rewrite /SQUEEZE1600 /squeezeblocks iota0 1:/# flatten_nil.
+by rewrite /squeezestate_last /squeezestate !take_le0 /#. 
 qed.
 
 lemma SQUEEZE1600_ll:
@@ -876,7 +931,7 @@ qed.
 phoare SQUEEZE1600_ph _r8 _st _len:
  [ Keccak1600Bytes.squeeze
  : r8=_r8 /\ st=_st /\ outlen=_len /\ 0<_r8 <= 200
-   ==> res = SQUEEZE1600 _r8 _st _len
+   ==> res = SQUEEZE1600 _r8 _len _st
  ] = 1%r.
 proof.
 by conseq SQUEEZE1600_ll (SQUEEZE1600_h _r8 _st _len).
@@ -915,7 +970,7 @@ hoare SHA3_224_h _m:
  Keccak1600Bytes.sha3_224
  : m = _m
    ==> res = SHA3_224 _m.
-proof. by proc; ecall (KECCAK1600_h 144 SHA_DS_BYTE m 28). qed.
+proof. by proc; ecall (KECCAK1600_h 144 SHA3_DS_BYTE m 28). qed.
 
 lemma SHA3_224_ll: islossless Keccak1600Bytes.sha3_224.
 proof. by proc; call KECCAK1600_ll. qed.
@@ -931,7 +986,7 @@ hoare SHA3_256_h _m:
  Keccak1600Bytes.sha3_256
  : m = _m
    ==> res = SHA3_256 _m.
-proof. by proc; ecall (KECCAK1600_h 136 SHA_DS_BYTE m 32). qed.
+proof. by proc; ecall (KECCAK1600_h 136 SHA3_DS_BYTE m 32). qed.
 
 lemma SHA3_256_ll: islossless Keccak1600Bytes.sha3_256.
 proof. by proc; call KECCAK1600_ll. qed.
@@ -947,7 +1002,7 @@ hoare SHA3_384_h _m:
  Keccak1600Bytes.sha3_384
  : m = _m
    ==> res = SHA3_384 _m.
-proof. by proc; ecall (KECCAK1600_h 104 SHA_DS_BYTE m 48). qed.
+proof. by proc; ecall (KECCAK1600_h 104 SHA3_DS_BYTE m 48). qed.
 
 lemma SHA3_384_ll: islossless Keccak1600Bytes.sha3_384.
 proof. by proc; call KECCAK1600_ll. qed.
@@ -963,7 +1018,7 @@ hoare SHA3_512_h _m:
  Keccak1600Bytes.sha3_512
  : m = _m
    ==> res = SHA3_512 _m.
-proof. by proc; ecall (KECCAK1600_h 72 SHA_DS_BYTE m 64). qed.
+proof. by proc; ecall (KECCAK1600_h 72 SHA3_DS_BYTE m 64). qed.
 
 lemma SHA3_512_ll: islossless Keccak1600Bytes.sha3_512.
 proof. by proc; call KECCAK1600_ll. qed.
@@ -1045,7 +1100,6 @@ proof. by conseq RAWSHAKE256_ll (RAWSHAKE256_h _m _outlen8). qed.
               eXtendable-Output Functions (XOFs)
 
 ***************************************************************)
-
 
 (** Using XOFs without explicit output len argument.
 
@@ -1160,16 +1214,16 @@ proof. smt(XOF_iP). qed.
 lemma XOF_iE r8 trail m i:
  0 < r8 <= 200 =>
  0 <= i =>
- XOF_i r8 trail m i = statesqueeze_i r8 (ABSORB1600 r8 m trail) i.
+ XOF_i r8 trail m i = squeezestate_i r8 (ABSORB1600 trail r8 m) i.
 proof.
-move=> Hr Hi; rewrite /XOF_i /KECCAK1600 /SQUEEZE1600.
+move=> Hr Hi; rewrite /XOF_i /KECCAK1600 /SQUEEZE1600 /squeezeblocks.
 rewrite iota_add 1..2:/# map_cat flatten_cat iota1 /= flatten_cons flatten_nil cats0.
 rewrite drop_take 1:/# take_oversize.
  rewrite size_drop 1:/# size_cat.
- by rewrite size_flatten_statesqueeze_i 1..2:/# size_statesqueeze_i /#.
+ by rewrite size_squeezeblocks 1..2:/# size_squeezestate_i /#.
 rewrite drop_cat ifF /=.
- by rewrite size_flatten_statesqueeze_i /#.
-rewrite size_flatten_statesqueeze_i 1..2:/#.
+ by rewrite size_squeezeblocks /#.
+rewrite size_squeezeblocks 1..2:/#.
 by rewrite drop_le0 /#.
 qed.
 
@@ -1211,10 +1265,6 @@ module XOF_ideal_RAWSHAKE256: XOF_t = {
 
 (** ...which is implemented statefully! *)
 
-op SQUEEZE1600_BLOCK r8 st = let st' = keccak_f1600_op st in (st', statesqueeze st' r8).
-
-op SHAKE128_ABSORB m = ABSORB1600 c256_r8 m SHAKE_DS_BYTE.
-op SHAKE128_SQUEEZE_BLOCK = SQUEEZE1600_BLOCK c256_r8.
 
 module XOF_statefull_SHAKE128: XOF_t = {
  var st: state
@@ -1223,13 +1273,10 @@ module XOF_statefull_SHAKE128: XOF_t = {
  }
  proc next_block() = {
   var bl;
-  (st, bl) <- SHAKE128_SQUEEZE_BLOCK st;
+  (st, bl) <- SHAKE128_SQUEEZEBLOCK st;
   return bl;
   }
 }.
-
-op SHAKE256_ABSORB m = ABSORB1600 c512_r8 m SHAKE_DS_BYTE.
-op SHAKE256_SQUEEZE_BLOCK = SQUEEZE1600_BLOCK c512_r8.
 
 module XOF_statefull_SHAKE256: XOF_t = {
  var st: state
@@ -1238,13 +1285,10 @@ module XOF_statefull_SHAKE256: XOF_t = {
  }
  proc next_block(): bytes = {
   var bl;
-  (st, bl) <- SHAKE256_SQUEEZE_BLOCK st;
+  (st, bl) <- SHAKE256_SQUEEZEBLOCK st;
   return bl;
   }
 }.
-
-op RAWSHAKE128_ABSORB m = ABSORB1600 c256_r8 m RAWSHAKE_DS_BYTE.
-op RAWSHAKE128_SQUEEZE_BLOCK = SQUEEZE1600_BLOCK c256_r8.
 
 module XOF_statefull_RAWSHAKE128: XOF_t = {
  var st: state
@@ -1253,13 +1297,10 @@ module XOF_statefull_RAWSHAKE128: XOF_t = {
  }
  proc next_block() = {
   var bl;
-  (st, bl) <- RAWSHAKE128_SQUEEZE_BLOCK st;
+  (st, bl) <- SHAKE128_SQUEEZEBLOCK st;
   return bl;
   }
 }.
-
-op RAWSHAKE256_ABSORB m = ABSORB1600 c512_r8 m RAWSHAKE_DS_BYTE.
-op RAWSHAKE256_SQUEEZE_BLOCK = SQUEEZE1600_BLOCK c512_r8.
 
 module XOF_statefull_RAWSHAKE256: XOF_t = {
  var st: state
@@ -1268,15 +1309,15 @@ module XOF_statefull_RAWSHAKE256: XOF_t = {
  }
  proc next_block(): bytes = {
   var bl;
-  (st, bl) <- RAWSHAKE256_SQUEEZE_BLOCK st;
+  (st, bl) <- SHAKE256_SQUEEZEBLOCK st;
   return bl;
   }
 }.
 
 (** equivalence of both APIs are established by the following invariant *)
 
-op inv_XOF (f: bytes -> state) (gI: bytes*int) (gS: state) =
- 0 <= gI.`2 /\ gS = st_i (f gI.`1) gI.`2.
+op inv_XOF (f: bytes -> state) (gI: int*bytes) (gS: state) =
+ 0 <= gI.`1 /\ gS = st_i (f gI.`2) gI.`1.
 
 op inv_XOF_SHAKE128 = inv_XOF SHAKE128_ABSORB.
 
@@ -1296,8 +1337,8 @@ equiv XOF_IND_SHAKE128_next_block:
      /\ ={res}.
 proof.
 proc; auto => /> &1 &2; split.
- by rewrite /st_i iterS /#.
-by rewrite /SHAKE128_i XOF_iE // /statesqueeze_i /st_i iterS /#.
+ by rewrite /st_i iterS 1:// iter1 /#.
+by rewrite /SHAKE128_i XOF_iE // /squeezestate_i /st_i iterS 1:// iter1.
 qed.
 
 op inv_XOF_SHAKE256 = inv_XOF SHAKE256_ABSORB.
@@ -1318,8 +1359,8 @@ equiv XOF_IND_SHAKE256_next_block:
      /\ ={res}.
 proof.
 proc; auto => /> &1 &2; split.
- by rewrite /st_i iterS /#.
-by rewrite /SHAKE256_i XOF_iE // /statesqueeze_i /st_i iterS /#.
+ by rewrite /st_i iterS 1:// iter1 /#.
+by rewrite /SHAKE256_i XOF_iE // /squeezestate_i /st_i iterS 1:// iter1.
 qed.
 
 op inv_XOF_RAWSHAKE128 = inv_XOF RAWSHAKE128_ABSORB.
@@ -1340,8 +1381,8 @@ equiv XOF_IND_RAWSHAKE128_next_block:
      /\ ={res}.
 proof.
 proc; auto => /> &1 &2; split.
- by rewrite /st_i iterS /#.
-by rewrite /RAWSHAKE128_i XOF_iE // /statesqueeze_i /st_i iterS /#.
+ by rewrite /st_i iterS 1:// iter1 /#.
+by rewrite /RAWSHAKE128_i XOF_iE // /squeezestate_i /st_i iterS 1:// iter1.
 qed.
 
 op inv_XOF_RAWSHAKE256 = inv_XOF RAWSHAKE256_ABSORB.
@@ -1362,7 +1403,7 @@ equiv XOF_IND_RAWSHAKE256_next_block:
      /\ ={res}.
 proof.
 proc; auto => /> &1 &2; split.
- by rewrite /st_i iterS /#.
-by rewrite /RAWSHAKE256_i XOF_iE // /statesqueeze_i /st_i iterS /#.
+ by rewrite /st_i iterS 1:// iter1 /#.
+by rewrite /RAWSHAKE256_i XOF_iE // /squeezestate_i /st_i iterS 1:// iter1.
 qed.
 

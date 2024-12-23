@@ -1,7 +1,7 @@
 (* General EC imports *)
 require import AllCore.
 from Jasmin require import JWord.
-require import Array32 Array64 Array128 Array960 Array1152.
+require import Array32 Array33 Array64 Array128 Array960 Array1152.
 
 (* Imports of "lower-level" MLKEM spec parts *)
 require import Rq.
@@ -18,6 +18,9 @@ type skey = W8.t Array1152.t.
 type plaintext = W8.t Array32.t.
 type ciphertext = W8.t Array960.t * W8.t Array128.t.
 
+abbrev G_coins_ds(coins : W8.t Array32.t) = 
+   G_coins (Array33.init (fun i => if i < 32 then coins.[i] else W8.of_int kvec)).
+
 module InnerPKE = {
 
   (* Spec gives a derandomized enc that matches this code *)
@@ -31,7 +34,7 @@ module InnerPKE = {
     s <- witness;
     sv <- witness;
     tv <- witness;
-    (rho,sig) <- G_coins coins;
+    (rho,sig) <- G_coins_ds coins;
     _N <- 0; 
     i <- 0;
     while (i < kvec) {

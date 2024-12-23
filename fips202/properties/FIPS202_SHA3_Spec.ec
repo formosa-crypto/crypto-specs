@@ -272,8 +272,9 @@ while (r=_r /\ d=_d /\ 0<_r<=1600 /\ 1<=i /\ r*i=size z /\ r*(i-1) < d /\
 auto => /> ???; split.
  rewrite size_take' 1:/# size_state2bits ifT 1:/# /st_i iter0 1:/# => />.
  by rewrite -iotaredE /(\o) /flatten /= iter0 1:/# cats0 /#.
-move=> i *; rewrite /keccak1600_sponge_op /keccak1600_squeeze_op.
-by congr; congr; congr; congr; smt().
+move=> i ?? H ?; rewrite /keccak1600_sponge_op /keccak1600_squeeze_op.
+congr; congr; congr; congr. 
+have ? : i <= (_d - 1) %/ _r + 1; by smt(). 
 qed.
 
 phoare keccak1600_squeeze_ph _r _s _d:
