@@ -20,6 +20,9 @@ import BitEncoding.BitChunking.
 
 import EclibExtra.
 
+require import Bindings.
+
+
 
 op bytes2state (bs: bytes): state =
  Array25.of_list W64.zero (w64L_from_bytes bs).
@@ -52,6 +55,27 @@ rewrite /bits2state /bytes2state tP => i Hi.
 by rewrite w64L_from_bits_from_bytes.
 qed.
 
+(*
+module MM = {
+ proc t(st: state): state = {
+    var l;
+    l <- state2bytes st;
+    st <- bytes2state l;
+    return st;
+  }
+}.
+
+op idstate (st:state): state = st.
+op ppp (st:state): bool = true.
+hoare ttt _st:
+ MM.t
+ : st = _st
+ ==> res = _st.
+proc.
+cfold 1.
+bdep 1600 1600 [_st] [st] [st] idstate ppp.
+*)
+
 (* sometimes it is convenient to have a byte-view of the state... *)
 (*from JExtr*) require import WArray200.
 
@@ -60,6 +84,34 @@ abbrev stbytes (st: state) : WArray200.t =
 abbrev stwords (st200: WArray200.t) : state =
  Array25.init (WArray200.get64 st200).
 
+abbrev u64_bits8 (w: W64.t) k : W8.t =
+ W8.init (fun i => w.[i+8*k]).
+
+abbrev u8_pack2 (w0 w1: W8.t): W16.t =
+ W16.init (fun i => if i < 8 then w0.[i]
+                    else w1.[i-8]).
+abbrev u16_pack2 (w0 w1: W16.t): W32.t =
+ W32.init (fun i => if i < 16 then w0.[i]
+                    else w1.[i-16]).
+abbrev u32_pack2 (w0 w1: W32.t): W64.t =
+ W64.init (fun i => if i < 32 then w0.[i]
+                    else w1.[i-32]).
+
+abbrev u64_pack8 (w0 w1 w2 w3 w4 w5 w6 w7: W8.t): W64.t =
+ u32_pack2
+  (u16_pack2 (u8_pack2 w0 w1) (u8_pack2 w2 w3))
+  (u16_pack2 (u8_pack2 w4 w5) (u8_pack2 w6 w7)).
+
+
+require import Array200.
+print WArray200.get64_direct.
+op stbytes' (st:state): W8.t Array200.t =
+ Array200.init (fun i => u64_bits8 st.[i %/ 8] (i%%8)).
+
+op stwords' (st: W8.t Array200.t): state =
+ init_25_64 (fun i => u64_pack8 st.[8*i+0] st.[8*i+1] st.[8*i+2] st.[8*i+3] st.[8*i+4] st.[8*i+5] st.[8*i+6] st.[8*i+7]).
+
+print WArray200.init64.
 lemma stbytesK st:
  stwords (stbytes st) = st.
 proof.
@@ -421,6 +473,7 @@ rewrite /squeezeblocks iota_add 1..2:/# map_cat flatten_cat.
 by rewrite take_cat' ifT 1:size_squeezeblocks /#.
 qed.
 
+require import StdOrder.
 lemma keccak1600_squeeze_opE r r8 st outlen outlen8:
  0 < r <= 1600 =>
  r = 8*r8 =>
@@ -432,7 +485,9 @@ move=> Hr Hr8 Ho8.
 case: (outlen <= 0) => Hout.
  rewrite /keccak1600_squeeze_op take_le0 1:/# //.
  rewrite SQUEEZE1600_iblocks_last 1:/# iota0 1:/#  flatten_nil /=.
- by rewrite /squeezestate take_le0 /#.
+ rewrite /squeezestate take_le0.
+  smt(@IntOrder). 
+ by rewrite bytes_to_bits_nil.
 rewrite /keccak1600_squeeze_op /SQUEEZE1600.
 rewrite bytes_to_bits_take -Ho8; congr.
 rewrite bytes_to_bits_flatten; congr.
@@ -894,7 +949,12 @@ proc; case: (0 < outlen); simplify.
          #[/1,3:]pre /\
          out_bytes = flatten (map (squeezestate_i _r8 _st) (iota_ 0 (i-1))) /\
          st = st_i _st (i-1)).
-   auto => /> &m Hi_1 Hi_2 Hr8_1 Hr8_2 *; split; 1:smt().
+   auto => /> &m Hi_1 Hi_2 Hr8_1 Hr8_2 *; split.
+    split; first smt().
+    move=> *.
+    have L: (_r8 * i{m}) %/ _r8 <= (_len - 1) %/ _r8.
+     by apply leq_div2r; smt().
+    smt().
    rewrite /squeezestate_block /= /st_i -iterS 1:/# /=.
    rewrite {3}(:i{m}=i{m}-1+1) 1:/# iotaSr 1:/# /=.
    by rewrite map_rcons flatten_rcons /squeezestate_i /= /#.
@@ -1224,7 +1284,7 @@ rewrite drop_take 1:/# take_oversize.
 rewrite drop_cat ifF /=.
  by rewrite size_squeezeblocks /#.
 rewrite size_squeezeblocks 1..2:/#.
-by rewrite drop_le0 /#.
+by rewrite drop_le0 1:/#; congr; smt().
 qed.
 
 (** Implementations often rely on an API providing incremental access to

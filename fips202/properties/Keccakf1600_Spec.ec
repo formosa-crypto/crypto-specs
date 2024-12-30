@@ -8,31 +8,33 @@ require import AllCore List Int IntDiv.
 require StdOrder.
 import StdOrder.IntOrder.
 
-require import EclibExtra.
+require import Bindings EclibExtra.
 
 require import FIPS202_Keccakf1600.
 
 require import Array5 Array24.
 
+op idx_op x = idx x.
 
 (* State-matrix indexes *)
 lemma idx_bnd x y:
- 0 <= idx(x,y) < 25.
+ 0 <= idx_op (x,y) < 25.
 proof. by rewrite /idx /= /#. qed.
 
-op invidx (i: int): int*int = (i %% 5, i %/ 5).
+abbrev invidx (i: int): int*int = (i %% 5, i %/ 5).
+op invidx_op i = invidx i.
 
 lemma invidxK i:
  0 <= i < 25 =>
- idx (invidx i) = i.
+ idx_op (invidx_op i) = i.
 proof.
 rewrite -(add0z 25) andaE -mem_iota.
-by move: i; rewrite -allP -iotaredE /idx /invidx /=.
+by move: i; rewrite -allP -iotaredE /=.
 qed.
 
 lemma idxK x y:
  0 <= x < 5 => 0 <= y < 5 =>
- invidx (idx (x,y)) = (x,y).
+ invidx_op (idx_op (x,y)) = (x,y).
 proof.
 move => Hx; rewrite -(add0z 5) andaE -mem_iota.
 move: y; rewrite -allP.
@@ -41,51 +43,71 @@ by move: x; rewrite -allP -!iotaredE /idx /invidx /=.
 qed.
 
 lemma idxK' x y:
- invidx (idx (x,y)) = (x%%5,y%%5).
+ invidx_op (idx_op (x,y)) = (x%%5,y%%5).
 proof.
-by rewrite (:idx(x,y)=idx(x%%5,y%%5)) 1:/# idxK /#.
+by rewrite (:idx_op(x,y)=idx(x%%5,y%%5)) 1:/# idxK /#.
 qed.
 
 
 (** precomputed rho-offsets *)
-op rhotates: int Array25.t =
- Array25.of_list 0 [  0;  1; 62; 28; 27
-                   ; 36; 44;  6; 55; 20
-                   ;  3; 10; 43; 25; 39
-                   ; 41; 45; 15; 21;  8
-                   ; 18;  2; 61; 56; 14 ].
+op rhotates: W64.t Array25.t =
+ Array25.of_list W64.zero
+  [ W64.of_int  0
+  ; W64.of_int  1
+  ; W64.of_int 62
+  ; W64.of_int 28
+  ; W64.of_int 27
+  ; W64.of_int 36
+  ; W64.of_int 44
+  ; W64.of_int  6
+  ; W64.of_int 55
+  ; W64.of_int 20
+  ; W64.of_int  3
+  ; W64.of_int 10
+  ; W64.of_int 43
+  ; W64.of_int 25
+  ; W64.of_int 39
+  ; W64.of_int 41
+  ; W64.of_int 45
+  ; W64.of_int 15
+  ; W64.of_int 21
+  ; W64.of_int  8
+  ; W64.of_int 18
+  ; W64.of_int  2
+  ; W64.of_int 61
+  ; W64.of_int 56
+  ; W64.of_int 14 ].
 
 
 (** Round-constants *)
 op rc_spec: W64.t Array24.t =
   Array24.of_list
     witness
-    (map W64.of_int
-      [                   1
-      ;               32898
-      ; 9223372036854808714
-      ; 9223372039002292224
-      ;               32907
-      ;          2147483649
-      ; 9223372039002292353
-      ; 9223372036854808585
-      ;                 138
-      ;                 136
-      ;          2147516425
-      ;          2147483658
-      ;          2147516555
-      ; 9223372036854775947
-      ; 9223372036854808713
-      ; 9223372036854808579
-      ; 9223372036854808578
-      ; 9223372036854775936
-      ;               32778
-      ; 9223372039002259466
-      ; 9223372039002292353
-      ; 9223372036854808704
-      ;          2147483649
-      ; 9223372039002292232
-      ]).
+    [ W64.of_int                   1
+    ; W64.of_int               32898
+    ; W64.of_int 9223372036854808714
+    ; W64.of_int 9223372039002292224
+    ; W64.of_int               32907
+    ; W64.of_int          2147483649
+    ; W64.of_int 9223372039002292353
+    ; W64.of_int 9223372036854808585
+    ; W64.of_int                 138
+    ; W64.of_int                 136
+    ; W64.of_int          2147516425
+    ; W64.of_int          2147483658
+    ; W64.of_int          2147516555
+    ; W64.of_int 9223372036854775947
+    ; W64.of_int 9223372036854808713
+    ; W64.of_int 9223372036854808579
+    ; W64.of_int 9223372036854808578
+    ; W64.of_int 9223372036854775936
+    ; W64.of_int               32778
+    ; W64.of_int 9223372039002259466
+    ; W64.of_int 9223372039002292353
+    ; W64.of_int 9223372036854808704
+    ; W64.of_int          2147483649
+    ; W64.of_int 9223372039002292232
+    ].
 
 
 (******************************************************************************
@@ -93,32 +115,35 @@ op rc_spec: W64.t Array24.t =
 ******************************************************************************)
 
 op keccak_C (A: state): W64.t Array5.t =
- Array5.init (fun x => A.[x+5*0] `^` A.[x+5*1]
-                      `^` A.[x+5*2] `^` A.[x+5*3] `^` A.[x+5*4]).
+ init_5_64 (fun x => A.[x+5*0] `^` A.[x+5*1]
+            `^` A.[x+5*2] `^` A.[x+5*3] `^` A.[x+5*4]).
 
 op keccak_D (C: W64.t Array5.t): W64.t Array5.t =
- Array5.init (fun x => C.[(x-1)%%5]
-                       `^` (C.[(x+1)%%5] `|<<<|` 1)).
+ init_5_64 (fun x => C.[(x-1)%%5]
+                `^` (rol_64 C.[(x+1)%%5] (W64.of_int 1))).
 
 op keccak_theta_op (A: state ): state =
- Array25.init (fun i => A.[i] `^` (keccak_D (keccak_C A)).[i %% 5]).
+ init_25_64 (fun i => A.[i] `^` (keccak_D (keccak_C A)).[i %% 5]).
 
 op keccak_rho_op (A: state): state =
- Array25.init (fun i => A.[i] `|<<<|` rhotates.[i]).
+ init_25_64 (fun i => rol_64 A.[i] rhotates.[i]).
 
 op keccak_pi_op (A: state): state =
- Array25.init (fun i => let (x,y) = invidx i in A.[idx(x+3*y, x)]).
+ init_25_64 (fun i => let (x,y) = invidx i in A.[idx(x+3*y, x)]).
 
 op keccak_chi_op (A: state): state =
- Array25.init
+ init_25_64
   (fun i => let (x,y) = invidx i in
             A.[idx(x,y)] `^` (invw A.[idx(x+1, y)] `&` A.[idx(x+2, y)])).
+
+op keccak_pround_op (A: state) =
+ keccak_chi_op (keccak_pi_op (keccak_rho_op (keccak_theta_op A))).
 
 op keccak_iota_op c (A: state) =
  A.[0 <- A.[0] `^` c].
 
 op keccak_round_op c (A: state) =
- keccak_iota_op c (keccak_chi_op (keccak_pi_op (keccak_rho_op (keccak_theta_op A)))).
+ keccak_iota_op c (keccak_pround_op A).
 
 op keccak_f1600_op (A: state) =
  foldl (fun s ir => keccak_round_op rc_spec.[ir] s) A (iota_ 0 24).
@@ -148,12 +173,12 @@ swap 2 2.
 seq 3: (#pre /\ c = keccak_C _A).
  do 6! unroll for ^while.
  auto => />.
- by rewrite -ext_eq_all /all_eq /keccak_C /idx /invidx /=.
+ by rewrite -ext_eq_all /all_eq /keccak_C /=.
 seq 3: (#pre /\ d = keccak_D c).
  unroll for 3; auto => />.
- by rewrite -ext_eq_all /all_eq /keccak_D /idx /invidx /=; smt(W64.xorwC).
+  rewrite -ext_eq_all /all_eq /keccak_D /init_5_64 /init_25_64 /rol_64 !of_uintK /=; smt(W64.xorwC).
 do 6! unroll for ^while.
-wp; skip => &m E @/keccak_theta_spec @/idx /=.
+wp; skip => &m E @/keccak_theta_spec /=.
 by rewrite -iotaredE /= /#.
 qed.
 
@@ -192,19 +217,19 @@ lemma rhotates_permS x y t:
  (x,y) = invidx rhotates_perm.[t] =>
  rhotates_perm.[t + 1] = idx (y, (2 * x + 3 * y) %% 5).
 proof.
-by move: t; rewrite -allP -iotaredE /invidx /rhotates_perm /idx /=.
+by move: t; rewrite -allP -iotaredE /rhotates_perm /=.
 qed.
 
 lemma rhotates_permP t:
  t \in iota_ 0 24 =>
- rhotates.[rhotates_perm.[t]]
+ to_uint rhotates.[rhotates_perm.[t]]
  = (t+1)*(t+2) %/ 2 %% 64.
 proof.
 by move: t; rewrite -allP -iotaredE /rhotates /rhotates_perm /=.
 qed.
 
 op keccak_rho_loopI (st:state) k =
- foldl (fun (st:state) i=> st.[rhotates_perm.[i] <- st.[rhotates_perm.[i]] `|<<<|` rhotates.[rhotates_perm.[i]]]) st (iota_ 0 k).
+ foldl (fun (st:state) i=> st.[rhotates_perm.[i] <- rol_64 st.[rhotates_perm.[i]] rhotates.[rhotates_perm.[i]]]) st (iota_ 0 k).
 
 hoare keccak_rho_h _st:
  Keccakf1600.keccak_rho:
@@ -219,15 +244,15 @@ while (0 <= t <= 24 /\
  split; first smt().
  split.
   rewrite (rhotates_permS x{m} y{m}) //; first smt(mem_iota).
-  by rewrite -Hidx idxK /#.
- rewrite /keccak_rho_loopI iotaSr //= foldl_rcons /=; congr; congr.
+  by rewrite -Hidx -idxK /#.
+ rewrite /keccak_rho_loopI iotaSr //= foldl_rcons /rol_64 /=; congr; congr.
   by rewrite Hidx.
  by rewrite rhotates_permP; smt(mem_iota).
 auto => />; split; first smt(iota0).
 move=> t *; have->: t=24 by smt().
 rewrite -ext_eq_all /all_eq /= /keccak_rho_op /keccak_rho_loopI.
 rewrite initiE 1:// /=.
-rewrite -iotaredE /rhotates /rhotates_perm /=.
+rewrite -iotaredE /rol_64 /rhotates /rhotates_perm /=.
 by rewrite W64_rol0.
 qed.
 
@@ -255,7 +280,7 @@ lemma keccak_piP A A':
  A' = keccak_pi_op A
  <=> keccak_pi_spec A A'.
 proof.
-by rewrite /keccak_pi_spec /keccak_pi_op /idx /invidx -iotaredE -!ext_eq_all /all_eq /=.
+by rewrite /keccak_pi_spec /keccak_pi_op -iotaredE -!ext_eq_all /all_eq /=.
 qed.
 
 hoare keccak_pi_h _A:
@@ -267,20 +292,18 @@ proc.
 while (0 <= x <= 5 /\
        forall j y, 0 <= j < x => 0 <= y < 5 => 
                    a.[idx(j,y)] = b.[idx(j+3*y,j)]).
- wp; while (0 <= y <= 5 /\
+ wp; while (0 <= y <= 5 /\ x < 5 /\
             (forall j y, 0 <= j && j < x => 0 <= y && y < 5 => 
                          a.[idx (j,y)] = b.[idx (j+3*y, j)]) /\
             forall k, 0 <= k < y => a.[idx(x,k)] = b.[idx(x+3*k,x)]).
-  auto => /> &1 Hy1 _ IH HH Hy2; split; first smt().
+  auto => /> &1 Hy1 _ Hx IH HH Hy2; split; first smt().
   split.
    move => j i *.
    rewrite get_setE 1:/#.
-   case: (i=y{1} /\ j=x{1}) => E.
-    by rewrite ifT /#.
-   smt().
+   by rewrite ifF /#.
   move=> k Hk1 Hk2.
   rewrite get_setE. 
-   by rewrite /idx /#.
+   by rewrite /#.
   case: (k=y{1}) => E.
    by rewrite E ifT /#.
   by rewrite HH /#.
@@ -296,7 +319,11 @@ while (0 <= x <= 5 /\
 auto => /> *. 
 split; first smt().
 move=> A x ???; have ->: x=5 by smt().
-by move => IH; rewrite /keccak_pi_spec -iotaredE /invidx /= /#.
+move => IH; rewrite /keccak_pi_spec.
+apply/List.allP => i Hi.
+move: (IH (invidx i).`1 (invidx i).`2 _ _) => //=.
+ smt().
+by move: Hi; rewrite mem_iota /#.
 qed.
 
 lemma keccak_pi_ll:
@@ -335,8 +362,8 @@ lemma keccak_chi_spec_eq A A':
  keccak_chi_spec A A' <=> keccak_chi_spec' A A'.
 proof.
 rewrite /keccak_chi_spec /keccak_chi_spec'; split.
-move=> H; apply/List.allP => x /mem_iota /= Hx.
- by apply/List.allP => y /mem_iota /= Hy; apply H => /#.
+move=> H; apply/List.allP => x /mem_iota Hx.
+ by apply/List.allP => y /mem_iota Hy; apply H => /#.
 move=> /List.allP H x y Hx Hy.
 move: (H x _); first smt(mem_iota).
 rewrite /= allP => {H} H.
@@ -349,7 +376,7 @@ lemma keccak_chiP A A':
  <=> keccak_chi_spec A A'.
 proof.
 rewrite keccak_chi_spec_eq /keccak_chi_spec' /keccak_chi_op.
-by rewrite -ext_eq_all /all_eq /invidx /idx -!iotaredE /= /#.
+by rewrite -ext_eq_all /all_eq /init_25_64 -!iotaredE /= /#.
 qed.
 
 hoare keccak_chi_h _A:
@@ -409,7 +436,6 @@ phoare keccak_chi_ph _A:
 proof.
 by conseq keccak_chi_ll (keccak_chi_h _A).
 qed.
-
 
 
 

@@ -40,7 +40,7 @@ op keccak_l = 6.
 type state = W64.t Array25.t.
 
 (** Index access *)
-op idx (xy: int*int): int = (xy.`1 %% 5) + (5 * (xy.`2 %% 5)).
+abbrev idx (xy: int*int): int = (xy.`1 %% 5) + (5 * (xy.`2 %% 5)).
 
 
 (** Section 3.1.2 - Converting Strings to Arrays *) 
