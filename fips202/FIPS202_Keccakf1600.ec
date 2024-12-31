@@ -10,10 +10,10 @@ require import AllCore List Int IntDiv.
 
 from Jasmin require export JWord JUtils.
 
-require export JWordList.
+from JazzEC require import Array5 Array24.
+from JazzEC require export Array25.
 
-(*from JExtr*) require import Array5 Array24.
-(*from JExtr*) require export Array25.
+require export JWordList.
 
 
 (** Section 3.1 - State
@@ -241,6 +241,4 @@ module Keccakf1600 = {
     return (st);
   }
 }.
-
-
 

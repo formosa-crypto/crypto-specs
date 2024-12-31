@@ -12,7 +12,7 @@ require import AllCore List Int IntDiv.
 require StdOrder.
 import StdOrder.IntOrder.
 
-require import Keccakf1600_Spec.
+require export FIPS202_SHA3 Keccakf1600_Spec.
 require import FIPS202_SHA3_Spec.
 
 require BitEncoding.
@@ -21,7 +21,6 @@ import BitEncoding.BitChunking.
 import EclibExtra.
 
 require import Bindings.
-
 
 
 op bytes2state (bs: bytes): state =
@@ -77,13 +76,14 @@ bdep 1600 1600 [_st] [st] [st] idstate ppp.
 *)
 
 (* sometimes it is convenient to have a byte-view of the state... *)
-(*from JExtr*) require import WArray200.
+from JazzEC require import WArray200.
 
 abbrev stbytes (st: state) : WArray200.t =
  WArray200.init64 ("_.[_]" st).
 abbrev stwords (st200: WArray200.t) : state =
  Array25.init (WArray200.get64 st200).
 
+(*
 abbrev u64_bits8 (w: W64.t) k : W8.t =
  W8.init (fun i => w.[i+8*k]).
 
@@ -103,15 +103,14 @@ abbrev u64_pack8 (w0 w1 w2 w3 w4 w5 w6 w7: W8.t): W64.t =
   (u16_pack2 (u8_pack2 w4 w5) (u8_pack2 w6 w7)).
 
 
-require import Array200.
-print WArray200.get64_direct.
+from JazzEC require import Array200.
 op stbytes' (st:state): W8.t Array200.t =
  Array200.init (fun i => u64_bits8 st.[i %/ 8] (i%%8)).
 
 op stwords' (st: W8.t Array200.t): state =
  init_25_64 (fun i => u64_pack8 st.[8*i+0] st.[8*i+1] st.[8*i+2] st.[8*i+3] st.[8*i+4] st.[8*i+5] st.[8*i+6] st.[8*i+7]).
+*)
 
-print WArray200.init64.
 lemma stbytesK st:
  stwords (stbytes st) = st.
 proof.

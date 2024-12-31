@@ -7,6 +7,7 @@
    https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.202.pdf
 ******************************************************************************)
 require import AllCore List Int IntDiv.
+
 require BitEncoding.
 import BitEncoding.BitChunking.
 

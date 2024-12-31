@@ -1,6 +1,8 @@
 require import AllCore IntDiv RealExp StdOrder RealExp Ring List Distr DInterval.
+
 from Jasmin require import JWord JUtils.
-require import Array25 Array256 Array384 Array128 Array168  Array32 Array960 Array768 Array1152.
+
+from JazzEC require import Array25 Array256 Array384 Array128 Array168  Array32 Array960 Array768 Array1152.
 
 
 (*---*) import BitEncoding BitChunking BS2Int.
@@ -125,7 +127,8 @@ move=> *; split.
  smt(expr_gt0 rg_asint RealOrder.divr_ge0).
 move=> _.
 have /#: (comp d (asint x)%r)%r < q%r * (2^d)%r / q%r + inv 2%r.
-apply (RealOrder.ler_lt_trans ((asint x)%r*(2^d)%r/q%r+ inv 2%r)); first smt(comp_bound).
+apply (RealOrder.ler_lt_trans ((asint x)%r*(2^d)%r/q%r+ inv 2%r)).
+ by move: (comp_bound d (asint x)%r); smt().
 by rewrite RealOrder.ltr_add2r RealOrder.ltr_pmul2r 1:/# RealOrder.ltr_pmul2r; smt(expr_gt0 rg_asint).
 qed.
 
@@ -486,11 +489,20 @@ op polyr2poly(p : AlgR) : poly = Array256.init (fun i => p.[i]).
 
 lemma poly2polyrP i p :  0<=i<256 => (poly2polyr p).[i] = p.[i].
 move => ib.
-have H := (BasePoly.to_basepolyT (fun (i0 : int) => if 0 <= i0 && i0 < 256 then p.[i0] else Zq.zero) _); 1: by smt().
+have H := (BasePoly.to_basepolyT (fun (i0 : int) => if 0 <= i0 && i0 < 256 then p.[i0] else Zq.zero) _).
+ split; first smt(). 
+ by exists 256; smt().
 rewrite /poly2polyr /"_.[_]".
 rewrite piK. 
-+ rewrite reducedP /=; 1: by smt(BasePoly.deg_leP).
-by smt().
++ rewrite reducedP /=.
+  apply BasePoly.deg_leP => //. 
+  move=> j Hj /=. 
+  move: H; pose P:= BasePoly.to_basepoly _.
+  have: P=P by done.
+  by move: {1}P => [|pol] /#.
+move: H; pose P:= BasePoly.to_basepoly _.
+have: P=P by done.
+by move: {1}P => [|pol] /#.
 qed.
 
 lemma polyr2polyP i p :  0<=i<256 => (polyr2poly p).[i] = p.[i].
@@ -530,14 +542,16 @@ elim (iota_ 0 256).
 move => x l H H1 /=.
 case (0 <= i - x).
  + move => * /=.
-   rewrite (H _) /=; 1: by smt(). 
+   rewrite (H _) /=.
+    by move=> y Hy; apply H1 => /= /#.
    ring.
    have -> : (poly2polyr b).[256 + i - x] = Zq.zero by smt(lt0_rcoeff gered_rcoeff).
    rewrite poly2polyrP; 1: by smt(mem_head). 
    rewrite poly2polyrP; 1: by smt().
    by ring.
 move => * /=.
-rewrite (H _) /=; 1: by smt(). 
+rewrite (H _) /=. 
+ by move=> y Hy; apply H1 => /= /#.
 ring.
 rewrite poly2polyrP; 1: smt().
 rewrite poly2polyrP; 1: by smt(mem_head). 
@@ -575,7 +589,6 @@ op invr(p : poly) = choiceb (fun q => q &* p = Rq.one) p.
 
 require Matrix. 
 
-print Matrix.
 clone import Matrix as KMatrix with
     op size <- kvec,
     type ZR.t <- poly,
@@ -598,8 +611,8 @@ clone import Matrix as KMatrix with
     proof ZR.mul1r by smt(one_lift mul_lift poly2polyrK mul1r polyr2polyK)
     proof ZR.mulrDl by smt(add_lift mul_lift poly2polyrK mulrDl polyr2polyK)
     proof ZR.mulVr by smt(choicebP)
-    proof ZR.unitP by  smt()
-    proof ZR.unitout by smt(choiceb_dfl)
+    proof ZR.unitP by smt()
+    proof ZR.unitout by (move=> x H; rewrite /invr choiceb_dfl // /#)
     proof ge0_size by auto.
 
 (* We give semantics to the spec operators *)
@@ -892,7 +905,7 @@ qed.
 (************************************)
 
 require import IntMin.
-require import EclibExtra JWordList Keccak1600_Spec FIPS202_SHA3_Spec.
+require import EclibExtra JWordList Keccak1600_Spec.
 
 (** parses a byte list into (candidate) coefficients *)
 op bytes2coeffs(bytes : W8.t list) : int list =
@@ -1493,20 +1506,24 @@ while ( (st,c,p){2}=(XOF.state,j,plist aa j){1}
       split; first smt().
       split; first smt().
       split; first smt().
-      split; first by rewrite size_cat; smt(size_ge0).
-      rewrite /L' take_oversize.
+      split.
+       rewrite size_cat addrA /L' E; congr.
+       by rewrite size_take 1:/# /= ifF /#.
+      rewrite /L' E take_oversize /=.
        smt(size_ge0).
-      by rewrite E pupdl_cat /pupdl /=.
+      by rewrite pupdl_cat /pupdl /=.
      smt().
     move=> HH1 (* take_one *).
     split.
      split; first smt().
      split; first smt().
      split; first smt(). 
-     split; first by rewrite size_cat; smt(size_ge0).
-     rewrite /L' (:N-size rbufk=1).
+     split.
+      rewrite size_cat addrA /L' E; congr.
+      by rewrite size_take 1:/# /= ifT /#.
+     rewrite /L' E (:N-size rbufk=1) /=.
       smt(size_ge0).
-     by rewrite E pupdl_cat /pupdl.
+     by rewrite pupdl_cat /pupdl.
     smt().
    (* cond1 && !cond2 *)
    have E: ldelta = [ incoeff (to_uint b168{m}.[k{m}] + 256 * (to_uint b168{m}.[k{m} + 1] %% 16)) ].
@@ -1516,10 +1533,12 @@ while ( (st,c,p){2}=(XOF.state,j,plist aa j){1}
     split; first smt().
     split; first smt().
     split; first smt().
-    split; first by rewrite size_cat; smt(size_ge0).
-    rewrite /L' take_oversize.
+    split.
+     rewrite size_cat addrA /L' E; congr.
+     by rewrite size_take 1:/# /= ifF /#.
+    rewrite /L' E take_oversize.
      smt(size_ge0).
-    by rewrite E pupdl_cat /pupdl /=.
+    by rewrite pupdl_cat /pupdl /=.
    smt().
   case: cond2 => /= C2.
    (* !cond1 && cond2 *)
@@ -1530,10 +1549,12 @@ while ( (st,c,p){2}=(XOF.state,j,plist aa j){1}
     split; first smt().
     split; first smt().
     split; first smt().
-    split; first by rewrite size_cat; smt(size_ge0).
-    rewrite /L' take_oversize.
+    split.
+     rewrite size_cat addrA /L' E; congr.
+     by rewrite size_take 1:/# /= ifF /#.
+    rewrite /L' E take_oversize.
      smt(size_ge0).
-    by rewrite E pupdl_cat /pupdl /=.
+    by rewrite pupdl_cat /pupdl /=.
    smt().
   (* !cond1 && !cond2 *)
   have E: ldelta = [].
@@ -1818,7 +1839,8 @@ lemma sampleAT_sem _sd :
  by conseq H_sem_equiv (sampleA_sem _sd);smt().
 
 
-require import DMap Array168 DList.
+from JazzEC require import Array168.
+require import DMap DList.
 clone DMapSampling as MSlw168 with
  type t1 <- int list,
  type t2 <- W8.t Array168.t.

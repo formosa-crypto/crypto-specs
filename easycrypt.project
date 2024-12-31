@@ -4,7 +4,8 @@ timeout = 30
 provers = CVC5@1.0
 provers = Z3@4.12
 
-rdirs = Jasmin:~/src/jasmin/main/eclib
-rdirs = common
+#rdirs = Jasmin:~/src/jasmin/main/eclib
+idirs = JazzEC:arrays
+idirs = common
 rdirs = fips202
 rdirs = ml-kem

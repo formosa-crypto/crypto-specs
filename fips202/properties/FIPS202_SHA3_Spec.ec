@@ -1,5 +1,5 @@
 (******************************************************************************
-   Keccak1600_Spec.ec:
+   FIPS202_SHA3_Spec.ec:
 
    Properties of the Keccak1600 specification.
 
@@ -9,7 +9,7 @@
 ******************************************************************************)
 require import AllCore List Int IntDiv.
 
-require export FIPS202_SHA3.
+require import FIPS202_SHA3.
 
 require import Keccakf1600_Spec.
 
@@ -274,7 +274,12 @@ auto => /> ???; split.
  by rewrite -iotaredE /(\o) /flatten /= iter0 1:/# cats0 /#.
 move=> i ?? H ?; rewrite /keccak1600_sponge_op /keccak1600_squeeze_op.
 congr; congr; congr; congr. 
-have ? : i <= (_d - 1) %/ _r + 1; by smt(). 
+apply lez_anti; split.
+ have ?/# : (i-1) <= (_d - 1) %/ _r.
+ by rewrite lez_divRL 1:// mulrC /#.
+move=> _.
+have ?/#: (_d - 1) %/ _r < i.
+by rewrite ltz_divLR 1:// /#.
 qed.
 
 phoare keccak1600_squeeze_ph _r _s _d:

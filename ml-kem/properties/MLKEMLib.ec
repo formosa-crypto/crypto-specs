@@ -275,7 +275,7 @@ by move: (W8.to_uint_cmp w) => /= /#.
 qed.
 
 (* JArray.ec *)
-require import Array256 Array32 Array64 Array128 Array168.
+from JazzEC require import Array256 Array32 Array64 Array128 Array168.
 (* useful for loop-invariants: relating arrays and lists... *)
 op a256l ['a] (a:'a Array256.t) (l:'a list) k: bool = size l = k /\ 
  forall i, 0 <= i < k => a.[i] = nth witness l i.

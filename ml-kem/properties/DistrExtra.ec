@@ -1,6 +1,7 @@
 require import AllCore List StdBigop StdOrder IntDiv Distr.
-(*---*) import IntOrder Bigint MUniform Range.
-
+require import Ring.
+import IntID.
+import IntOrder Bigint MUniform Range.
 
 
 (* ? Distr.ec *)
@@ -103,7 +104,7 @@ case xs En lt0_n=> [|x xs E lt0_n]; 1:smt().
  + by rnd (pred1 xs); skip; smt().
  + by rnd (pred1 x); skip; smt().
  + by hoare; auto; smt().
- + smt().
+ + by move=> /> /#.
 move=> len_xs; rewrite dlist1E 1:/# (_: n{1} <> size xs) /= 1:/#.
 byphoare (_: n = n{1} ==> xs = res)=> //=; hoare.
 by proc; auto => /> &m l; rewrite supp_dlist /#.
@@ -221,13 +222,13 @@ have ->: forall (y:int) b l, uniq l => count (fun x => (x=y) /\ b) l = b2i (y \i
 case: (0 <= x1 && x1 < 2 ^ k1) => Hx1.
  rewrite !b2i1 /= mem_range; congr; congr.
  apply eq_iff; split => H.
-  split; first smt(@IntOrder).
+  split; first smt().
   move=>_; rewrite exprD_nneg 1..2:/#.
-  have ->: 2 ^ k1 * 2 ^ k2 = 2 ^ k2 * 2 ^ k1 by smt().
+  have ->: 2 ^ k1 * 2 ^ k2 = 2 ^ k2 * 2 ^ k1 by ring.
   have ?: x2 * 2 ^ k1 < 2 ^ k2 * 2 ^ k1.
-  apply ltr_pmul2r; 1,2: smt(expr_gt0).
+   by apply ltr_pmul2r; 1,2: smt(expr_gt0).
   have  : x2 * 2 ^ k1 + 1*2^k1 <= 2 ^ k2 * 2 ^ k1; last by smt().
-  by rewrite -Ring.IntID.mulrDl /#.
+  by rewrite -Ring.IntID.mulrDl ler_pmul2r /#.
  split; 1: by smt().
  move => *;move : H => [HH HH0];rewrite exprD_nneg in HH0 => //. 
  by smt(expr_gt0).
@@ -431,7 +432,11 @@ op dcbd (eta_: int): int distr =
 
 lemma dbin1E_half n k:
  mu1 (dbin (inv 2%r) n) k = (bin n k)%r * (inv 2%r ^ n).
-proof. by rewrite dbin1E; smt(@Real). qed.
+proof.
+rewrite dbin1E 1:/#; congr.
+rewrite (:1%r - inv 2%r = inv 2%r) 1://. 
+by rewrite -RField.exprD 1:/# /#.
+qed.
 
 lemma dcbd1E eta_ x:
  mu1 (dcbd eta_) x = mcbd eta_ x.
@@ -461,8 +466,7 @@ proof.
 rewrite /support dcbd1E /mcbd.
 have ->: (-eta_ <= x && x <= eta_) = (0 < bin (2 * eta_) (x + eta_))
  by smt(gt0_bin).
-have ? : 0%r < inv 2%r ^ (2 * eta_); last by smt(@RealOrder).
-by smt(@RealOrder).
+by have ?/# : 0%r < inv 2%r ^ (2 * eta_) by smt(RealOrder.expr_gt0).
 qed.
 
 lemma ll_dcbd eta_:
@@ -648,8 +652,10 @@ rewrite /= !big_consT big_nil /=.
 pose f (y:_*_) := hamming_weight y.`1 - hamming_weight y.`2.
 pose fp (y:_*_) := 1 + hamming_weight y.`1 - hamming_weight y.`2.
 pose fm (y:_*_) := -1 + hamming_weight y.`1 - hamming_weight y.`2.
-rewrite (eq_dmap _ fm ((fun x=> -1 + x)\o f)) 1:/#.
-rewrite (eq_dmap _ fp ((fun x=> 1 + x)\o f)) 1:/#.
+rewrite (eq_dmap _ fm ((fun x=> -1 + x)\o f)).
+ by move => x; rewrite /(\o) /= /#.
+rewrite (eq_dmap _ fp ((fun x=> 1 + x)\o f)).
+ by move => x; rewrite /(\o) /= /#.
 rewrite -2!dmap_comp -/(dcbd_sample n).
 rewrite (dmap1E_can _ (fun x=>(-1)+x) (fun x=>x+1)) //.
 rewrite (dmap1E_can _ (fun x=>1+x) (fun x=>x-1)) //.
@@ -1056,7 +1062,7 @@ transitivity {2}
     split; first by rewrite cats1.
     split; first by rewrite size_rcons H0 /#. 
     rewrite cats1 filter_rcons /= Hx /=.
-    by rewrite take_rcons; smt(take_oversize size_take).
+    by rewrite take_rcons; smt(take_oversize size_take size_ge0).
    case: (x <= max{2}) => C1/=.
     rewrite cats1 filter_rcons /= C1 /= => C2.
     rewrite take_rcons.

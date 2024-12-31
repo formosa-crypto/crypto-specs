@@ -1,9 +1,11 @@
 require import AllCore List IntDiv QFABV.
-from Jasmin require import JModel_x86.
-require import Array4 Array5 Array6 Array7 Array8 Array9 Array24 Array25 Array32.
-require import Array48 Array50 Array256 Array768 Array960.
 
-require import WArray32 WArray512 WArray960 WArray1536.
+from Jasmin require import JModel_x86.
+
+from JazzEC require import Array4 Array5 Array6 Array7 Array8 Array9 Array24 Array25 Array32.
+from JazzEC require import Array48 Array50 Array256 Array768 Array960.
+
+from JazzEC require import WArray32 WArray512 WArray960 WArray1536.
 
 import BitEncoding BS2Int BitChunking.
 

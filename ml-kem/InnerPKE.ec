@@ -1,7 +1,9 @@
 (* General EC imports *)
 require import AllCore.
+
 from Jasmin require import JWord.
-require import Array32 Array33 Array64 Array128 Array960 Array1152.
+
+from JazzEC require import Array32 Array33 Array64 Array128 Array960 Array1152.
 
 (* Imports of "lower-level" MLKEM spec parts *)
 require import Rq.

@@ -1,8 +1,10 @@
 (* General EC imports *)
 require import AllCore.
 require import IntDiv.
+
 from Jasmin require import JWord.
-require import Array128 Array168 Array256.
+
+from JazzEC require import Array128 Array168 Array256.
 
 (* Imports of "lower-level" MLKEM spec parts *)
 require import GFq.

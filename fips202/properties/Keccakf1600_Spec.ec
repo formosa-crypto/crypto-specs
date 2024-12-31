@@ -12,7 +12,7 @@ require import Bindings EclibExtra.
 
 require import FIPS202_Keccakf1600.
 
-require import Array5 Array24.
+from JazzEC require import Array5 Array24.
 
 op idx_op x = idx x.
 

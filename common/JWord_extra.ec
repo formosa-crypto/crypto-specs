@@ -16,7 +16,7 @@ proof.
 elim: s n => //=.
  smt().
 move=> x xs IH n /=.
-by case: (n <= 0) => C; smt().
+by case: (n <= 0) => C; smt(size_ge0).
 qed.
 
 lemma size_take' ['a] (s: 'a list) n:
@@ -25,7 +25,7 @@ proof.
 elim: s n => //=.
  smt().
 move=> x xs IH n /=.
-by case: (n <= 0) => C; smt().
+by case: (n <= 0) => C; smt(size_ge0).
 qed.
 
 (* add to JWord.ec *)
@@ -77,7 +77,7 @@ lemma W16_msb_sar (w: W16.t) k:
  msb (sar w k) = msb w.
 proof.
 move=> Hk.
-by rewrite !W16_msbE /(`|>>`) /sar /= /#.
+by rewrite !W16_msbE /(`|>>>`) /sar /= /#.
 qed.
 
 lemma W16_msb_sign (w: W16.t):
@@ -110,7 +110,7 @@ lemma W16_sar_pos (w: W16.t) k:
 proof.
 rewrite W16_msbE /= => Hk Hpos.
 apply W16.ext_eq => i Hi.
-rewrite /sar initiE //=.
+rewrite /(`|>>>`) initiE //=.
 rewrite /(`>>>`) Hi /=.
 case: (W16.size-1 < (i + k)) => E.
  by rewrite lez_minl 1:/# eq_sym get_out /#.
@@ -135,7 +135,7 @@ lemma W16_sarE_neg (w: W16.t) k:
 proof.
 rewrite W16_msbE /= => Hk Hmsb.
 apply W16.ext_eq => i Hi.
-rewrite /sar initiE //=.
+rewrite /(`|>>>`) initiE //=.
 rewrite /(`>>>`) !Hi //=.
 have ->/=: 0 <= i + k by smt().
 case: (i + k < W16.size) => C.
@@ -222,7 +222,6 @@ by rewrite W16_sar_pos // to_uint_shr /#.
 qed.
 
 
-
 (* W32 *)
 
 lemma W32_get_ule (w: W32.t) k:
@@ -260,7 +259,7 @@ lemma W32_msb_sar (w: W32.t) k:
  msb (sar w k) = msb w.
 proof.
 move=> Hk.
-by rewrite !W32_msbE /(`|>>`) /sar /= /#.
+by rewrite !W32_msbE /(`|>>>`) /sar /= /#.
 qed.
 
 lemma W32_msb_sign (w: W32.t):
@@ -293,7 +292,7 @@ lemma W32_sar_pos (w: W32.t) k:
 proof.
 rewrite W32_msbE /= => Hk Hpos.
 apply W32.ext_eq => i Hi.
-rewrite /sar initiE //=.
+rewrite /(`|>>>`) initiE //=.
 rewrite /(`>>>`) Hi /=.
 case: (W32.size-1 < (i + k)) => E.
  by rewrite lez_minl 1:/# eq_sym get_out /#.
@@ -318,7 +317,7 @@ lemma W32_sarE_neg (w: W32.t) k:
 proof.
 rewrite W32_msbE /= => Hk Hmsb.
 apply W32.ext_eq => i Hi.
-rewrite /sar initiE //=.
+rewrite /(`|>>>`) initiE //=.
 rewrite /(`>>>`) !Hi //=.
 have ->/=: 0 <= i + k by smt().
 case: (i + k < W32.size) => C.

@@ -2,7 +2,8 @@ require import AllCore.
 require import IntDiv.
 require import List.
 require import Ring.
-require import Array256.
+
+from JazzEC require import Array256.
 
 require import GFq.
 import Zq.
