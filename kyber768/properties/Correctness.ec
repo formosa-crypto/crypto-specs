@@ -574,7 +574,6 @@ op invr(p : poly) = choiceb (fun q => q &* p = Rq.one) p.
 
 require Matrix. 
 
-print Matrix.
 clone import Matrix as KMatrix with
     op size <- kvec,
     type ZR.t <- poly,
@@ -908,7 +907,6 @@ clone import PRF_DEFS.PseudoRF as PRF_ with
 
 module KPRF = PRF_.PseudoRF.
 
-print CBD2.
 module CBD2_PRF(PRF : PseudoRF) = {
    proc sample(sig : W8.t Array32.t, _N : int) : poly = {
     var i : int;

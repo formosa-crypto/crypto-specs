@@ -1150,19 +1150,99 @@ rewrite /cc; do 192!(rewrite iteriS_rw;1: by smt()); rewrite iteri0; 1: by smt()
 
 simplify.
 
-do 192!(rewrite H0 1..3:/#).
-do 192!(rewrite H1 1..4:/#).
-do 192!(rewrite H2 1..4:/#).
-do 192!(rewrite H3 1..4:/#).
-do 192!(rewrite H4 1..3:/#).
+(**
+A contrived way of achieving the effect of the following
+lines (which the current bdep EC branch does not appear
+to be able to handle...)
+
+do 192!(rewrite {-1}H0 1..3://).
+do 192!(rewrite {-1}H1 1..4://).
+do 192!(rewrite {-1}H2 1..4://).
+do 192!(rewrite {-1}H3 1..4://).
+do 192!(rewrite {-1}H4 1..3://).
 simplify.
+
 
 have  := (Array960.init_set witness (fun i => x.[i])). 
 rewrite -JUtils.iotaredE /= => ->.
 by rewrite tP => k kb; rewrite initiE //=.
+*)
 
+pose X:= (_.[839 <- _])%Array960; do 24!
+(rewrite H4 1..3:// H3 1..4:// H2 1..4:// H1 1..4:// H0 1..3://=);
+have HH: forall k, 0 <= k < 840 => X.[k] = x.[k]; first last.
+apply Array960.ext_eq => i Hi; case: (i < 840) => C.
+ by do 120! (rewrite set_neqiE 1..2:/#); apply HH => /#.
+have: i \in JUtils.iotared 840 120 by smt().
+by move: {Hi C} i; apply/List.allP => /=.
+
+move=> i Hi; rewrite /X; clear X.
+
+pose X:= (_.[719 <- _])%Array960; do 24!
+(rewrite H4 1..3:// H3 1..4:// H2 1..4:// H1 1..4:// H0 1..3://=);
+have HH: forall k, 0 <= k < 720 => X.[k] = x.[k]; first last.
+case: (i < 720) => C.
+ by do 120! (rewrite set_neqiE 1..2:/#); apply HH => /#.
+have: i \in JUtils.iotared 720 120 by smt().
+by move: {Hi C} i; apply/List.allP => /=.
+
+move => {i Hi} i Hi; rewrite /X; clear X.
+
+pose X:= (_.[599 <- _])%Array960. do 24!
+(rewrite H4 1..3:// H3 1..4:// H2 1..4:// H1 1..4:// H0 1..3://=);
+have HH: forall k, 0 <= k < 600 => X.[k] = x.[k]; first last.
+case: (i < 600) => C.
+ by do 120! (rewrite set_neqiE 1..2:/#); apply HH => /#.
+have: i \in JUtils.iotared 600 120 by smt().
+by move: {Hi C} i; apply/List.allP => /=.
+
+move => {i Hi} i Hi; rewrite /X; clear X.
+
+pose X:= (_.[479 <- _])%Array960; do 24!
+(rewrite H4 1..3:// H3 1..4:// H2 1..4:// H1 1..4:// H0 1..3://=);
+have HH: forall k, 0 <= k < 480 => X.[k] = x.[k]; first last.
+case: (i < 480) => C.
+ by do 120! (rewrite set_neqiE 1..2:/#); apply HH => /#.
+have: i \in JUtils.iotared 480 120 by smt().
+by move: {Hi C} i; apply/List.allP => /=.
+
+move => {i Hi} i Hi; rewrite /X; clear X.
+
+pose X:= (_.[359 <- _])%Array960; do 24!
+(rewrite H4 1..3:// H3 1..4:// H2 1..4:// H1 1..4:// H0 1..3://=);
+have HH: forall k, 0 <= k < 360 => X.[k] = x.[k]; first last.
+case: (i < 360) => C.
+ by do 120! (rewrite set_neqiE 1..2:/#); apply HH => /#.
+have: i \in JUtils.iotared 360 120 by smt().
+by move: {Hi C} i; apply/List.allP => /=.
+
+move => {i Hi} i Hi; rewrite /X; clear X.
+
+pose X:= (_.[239 <- _])%Array960; do 24!
+(rewrite H4 1..3:// H3 1..4:// H2 1..4:// H1 1..4:// H0 1..3://=);
+have HH: forall k, 0 <= k < 240 => X.[k] = x.[k]; first last.
+case: (i < 240) => C.
+ by do 120! (rewrite set_neqiE 1..2:/#); apply HH => /#.
+have: i \in JUtils.iotared 240 120 by smt().
+by move: {Hi C} i; apply/List.allP => /=.
+
+move => {i Hi} i Hi; rewrite /X; clear X.
+
+pose X:= (_.[119 <- _])%Array960; do 24!
+(rewrite H4 1..3:// H3 1..4:// H2 1..4:// H1 1..4:// H0 1..3://=);
+have HH: forall k, 0 <= k < 120 => X.[k] = x.[k]; first last.
+case: (i < 120) => C.
+ by do 120! (rewrite set_neqiE 1..2:/#); apply HH => /#.
+have: i \in JUtils.iotared 120 120 by smt().
+by move: {Hi C} i; apply/List.allP => /=.
+
+move => {i Hi} i Hi; rewrite /X; clear X.
+
+do 24!
+(rewrite H4 1..3:// H3 1..4:// H2 1..4:// H1 1..4:// H0 1..3://=).
+have: i \in JUtils.iotared 0 120 by smt().
+by move: {Hi} i; apply/List.allP => /=.
 qed.
-
 
 lemma sem_encode1K (x : ipoly) : 
    (forall i, 0 <= i < 256 => 0 <= x.[i] < 2) =>
