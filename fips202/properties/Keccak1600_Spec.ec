@@ -23,37 +23,6 @@ import EclibExtra.
 require import Bindings.
 
 
-op bytes2state (bs: bytes): state =
- Array25.of_list W64.zero (w64L_from_bytes bs).
-
-op state2bytes (st: state): bytes =
- w64L_to_bytes (to_list st).
-
-lemma size_state2bytes s:
- size (state2bytes s) = 200.
-proof.
-by rewrite size_w64L_to_bytes Array25.size_to_list.
-qed.
-
-lemma bits2bytes2state l:
- bits2state l = bytes2state (bytes_from_bits l).
-proof.
-by rewrite /bytes2state w64L_from_bytes_from_bits /#.
-qed.
-
-lemma state2bytes2bits s:
- bytes_to_bits (state2bytes s) = state2bits s.
-proof.
-by rewrite /state2bytes /state2bits w64L_to_bytes_to_bits.
-qed.
-
-lemma bytes2bits2state l:
- bits2state (bytes_to_bits l) = bytes2state l.
-proof.
-rewrite /bits2state /bytes2state tP => i Hi.
-by rewrite w64L_from_bits_from_bytes.
-qed.
-
 (*
 module MM = {
  proc t(st: state): state = {
@@ -111,6 +80,7 @@ op stwords' (st: W8.t Array200.t): state =
  init_25_64 (fun i => u64_pack8 st.[8*i+0] st.[8*i+1] st.[8*i+2] st.[8*i+3] st.[8*i+4] st.[8*i+5] st.[8*i+6] st.[8*i+7]).
 *)
 
+(* TODO: remove redundancy between stbytes and state2bytes *)
 lemma stbytesK st:
  stwords (stbytes st) = st.
 proof.
@@ -133,6 +103,52 @@ lemma stbytes_inj s1 s2:
  stbytes s1 = stbytes s2 => s1 = s2.
 proof.
 by move=> E; rewrite -(stbytesK s1) E stbytesK.
+qed.
+
+op bytes2state (bs: bytes): state =
+ Array25.of_list W64.zero (w64L_from_bytes bs).
+
+op state2bytes (st: state): bytes =
+ w64L_to_bytes (to_list st).
+
+lemma size_state2bytes s:
+ size (state2bytes s) = 200.
+proof.
+by rewrite size_w64L_to_bytes Array25.size_to_list.
+qed.
+
+lemma state2bytesK:
+ cancel state2bytes bytes2state.
+proof.
+by move=> st; rewrite /bytes2state /state2bytes w64L_to_bytesK to_listK.
+qed.
+
+lemma bytes2stateK l:
+ size l = 200 =>
+ state2bytes (bytes2state l) = l.
+proof.
+move=> Esz; rewrite /bytes2state /state2bytes of_listK.
+ by rewrite size_w64L_from_bytes Esz /= /#.
+by rewrite w64L_from_bytesK /chunkfill chunkpadE 1:// ifT 1:Esz 1:// 1:cats0.
+qed.
+
+lemma bits2bytes2state l:
+ bits2state l = bytes2state (bytes_from_bits l).
+proof.
+by rewrite /bytes2state w64L_from_bytes_from_bits /#.
+qed.
+
+lemma state2bytes2bits s:
+ bytes_to_bits (state2bytes s) = state2bits s.
+proof.
+by rewrite /state2bytes /state2bits w64L_to_bytes_to_bits.
+qed.
+
+lemma bytes2bits2state l:
+ bits2state (bytes_to_bits l) = bytes2state l.
+proof.
+rewrite /bits2state /bytes2state tP => i Hi.
+by rewrite w64L_from_bits_from_bytes.
 qed.
 
 abbrev bytes2stbytes l = WArray200.of_list l.
