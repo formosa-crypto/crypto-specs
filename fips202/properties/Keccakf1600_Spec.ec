@@ -8,11 +8,11 @@ require import AllCore List Int IntDiv.
 require StdOrder.
 import StdOrder.IntOrder.
 
-require import Bindings EclibExtra.
-
-require import FIPS202_Keccakf1600.
+require export Bindings EclibExtra.
+require export FIPS202_Keccakf1600.
 
 from JazzEC require import Array5 Array24.
+from JazzEC require import Array24.
 
 op idx_op x = idx x.
 
