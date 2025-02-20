@@ -3,7 +3,7 @@
 # --------------------------------------------------------------------
 ECCONF := config/tests.config 
 JOBS   ?= 1
-CHECKS ?= specs
+CHECKS ?= common fips202 ml-kem ml-dsa
 
 # --------------------------------------------------------------------
 .PHONY: default check clean_eco
