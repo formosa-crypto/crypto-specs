@@ -185,7 +185,10 @@ lemma drop_take ['a] n1 n2 (bs: 'a list):
  0 <= n1 =>
  drop n1 (take n2 bs)
  = take (n2-n1) (drop n1 bs).
-elim/natind: n1 n2; first smt().
+elim/natind: n1 n2.
+ move=> n1 Hn1 n2 Hn2.
+ have ->/=: n1=0 by smt().
+ by rewrite !drop0.
 move=> n Hn0 IH n2 Hn1.
 rewrite !dropS // IH // behead_take; congr.
 smt().

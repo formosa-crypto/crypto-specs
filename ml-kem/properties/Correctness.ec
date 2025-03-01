@@ -1598,14 +1598,14 @@ inline fill_poly.
 seq 5 11: (={rho, p, k, c} /\ (st,(j,i)){1}=(st0,ji){2} /\ k{2}=3).
  unroll {1} 5; rcondt {1} 5; first by auto.
  unroll {1} 10; rcondt {1} 10.
-  move=> &m; auto => />.
+  move=> &m; auto => /> &m'.
   rewrite take_oversize.
    apply (ler_trans 112); 2:done.
    apply (size_rejection_le' 168); 1:done.
    by rewrite size_squeezestate_i.
   smt(size_rejection_le).
  unroll {1} 15; rcondt {1} 15.
-  move=> &m; auto => />.
+  move=> &m; auto => /> &m'.
   rewrite take_oversize.
    apply (ler_trans 112); 2:done.
    apply (size_rejection_le' 168); 1:done.

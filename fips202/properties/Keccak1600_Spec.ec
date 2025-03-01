@@ -311,6 +311,7 @@ case: (i < r8-1) => C.
 by rewrite ifF /#.
 qed.
 
+from Jasmin require import JUtils.
 lemma split_padded_rcons r8 m ds_bits:
  0 < r8 =>
  size ds_bits <= 6 =>
@@ -321,8 +322,13 @@ lemma split_padded_rcons r8 m ds_bits:
 proof.
 move=> Hr Hsz.
 rewrite -!catA chunk_cat' 1:/# -cats1 !catA; congr.
-by rewrite chunk_size 1:/# !size_cat // size_chunkremains size_pad10star1
-  1:/# size_bytes_to_bits; smt(size_ge0).
+rewrite chunk_size 1:/# !size_cat // size_chunkremains size_pad10star1
+  1:/# size_bytes_to_bits; 1: smt(size_ge0).
+have ->:(8 * size m + size ds_bits) %% (8*r8)
+         = 8 * size m %% (8*r8) + size ds_bits.
+ by have:= divmod_mul r8 8 (size m) (size ds_bits) _ _;
+  smt(size_ge0).
+smt().
 qed.
 
 lemma absorb_iblocks r r8 m:
@@ -919,10 +925,12 @@ sp 1; seq 3: (#pre /\ st = stateabsorb_iblocks l st0).
    by rewrite -size_eq0 size_drop // size_chunk // /#.
   rewrite /stateabsorb_iblocks /=.
   apply eq_foldl => //.
-  rewrite /C nth_chunk // 1:/#. 
+  rewrite /C nth_chunk //.
+   by move: H; rewrite ltzE lez_divRL /#.
   congr; congr.
   rewrite drop_chunk // -nth0_head nth_chunk //=.
-   by rewrite size_drop 1:/# ler_maxr /#.
+   rewrite size_drop 1:/#.
+   by move: H; rewrite ltzE lez_divRL /#.
   by rewrite drop0.
  auto => /> *; split.
   by rewrite size_chunk // drop0; smt(size_ge0).

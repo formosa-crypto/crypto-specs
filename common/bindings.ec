@@ -208,16 +208,12 @@ rewrite /sll_16 => bv1 bv2.
 case : (16 <= to_uint bv2); last first.
 + rewrite /(`<<`) W16.to_uint_shl; 1: by smt(W8.to_uint_cmp).
   rewrite /truncateu8  => bv2bnd />.
-  rewrite (pmod_small (to_uint bv2) _).
-   smt(W16.to_uint_cmp).
-  rewrite (pmod_small (to_uint bv2) _).
+  rewrite (pmod_small (to_uint bv2) _) //.
   smt(W16.to_uint_cmp).
-  done.
 move => *. 
 have -> : to_uint bv2 = (to_uint bv2 - 16) + 16 by ring. 
 by rewrite exprD_nneg 1,2:/# /= /#.
 qed.
-
 
 op sra_16 (w1 w2 : W16.t) : W16.t =
 W16.sar w1 (to_uint w2).
