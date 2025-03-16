@@ -1001,6 +1001,16 @@ rewrite BVA_Top_Array25_Array25_t.tolistP.
 by apply eq_in_mkseq => i i_bnd; smt(Array25.initE).
 qed.
 
+op init_25_256 (f: int -> W256.t) = Array25.init f.
+
+bind op [W256.t & Array25.t] init_25_256 "ainit".
+realize bvainitP.
+proof.
+rewrite /init_25_256 => f.
+rewrite BVA_Top_Array25_Array25_t.tolistP.
+by apply eq_in_mkseq => i i_bnd; smt(Array25.initE).
+qed.
+
 op init_960_8 (f: int -> W8.t) : W8.t Array960.t = Array960.init f.
 
 bind op [W8.t & Array960.t] init_960_8 "ainit".
