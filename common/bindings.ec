@@ -32,6 +32,7 @@ qed.
 
 
 (* ----------- BEGIN BOOL BINDINGS ---------- *)
+import Bool.
 op bool2bits (b : bool) : bool list = [b].
 op bits2bool (b: bool list) : bool = List.nth false b 0.
 
@@ -48,6 +49,15 @@ realize tosintP by move => bv => //.
 
 bind op bool (/\) "and".
 realize bvandP by move=> bv1 bv2; rewrite /bool2bits /#.
+
+bind op bool (\/) "or".
+realize bvorP by move=> bv1 bv2; rewrite /bool2bits /#.
+
+bind op bool (^^) "xor".
+realize bvxorP by move=> bv1 bv2; rewrite /bool2bits /#.
+
+bind op bool [!] "not".
+realize bvnotP by move=> bv1; rewrite /bool2bits /#.
 
 (* ----------- BEGIN W8 BINDINGS ---------- *)
 bind bitstring W8.w2bits W8.bits2w W8.to_uint W8.to_sint W8.of_int W8.t 8.

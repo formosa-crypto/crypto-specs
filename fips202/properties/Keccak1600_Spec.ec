@@ -23,26 +23,7 @@ import EclibExtra.
 require import Bindings.
 
 
-(*
-module MM = {
- proc t(st: state): state = {
-    var l;
-    l <- state2bytes st;
-    st <- bytes2state l;
-    return st;
-  }
-}.
 
-op idstate (st:state): state = st.
-op ppp (st:state): bool = true.
-hoare ttt _st:
- MM.t
- : st = _st
- ==> res = _st.
-proc.
-cfold 1.
-bdep 1600 1600 [_st] [st] [st] idstate ppp.
-*)
 
 (* sometimes it is convenient to have a byte-view of the state... *)
 from JazzEC require import WArray200.
@@ -51,6 +32,9 @@ abbrev stbytes (st: state) : WArray200.t =
  WArray200.init64 ("_.[_]" st).
 abbrev stwords (st200: WArray200.t) : state =
  Array25.init (WArray200.get64 st200).
+
+
+
 
 (*
 abbrev u64_bits8 (w: W64.t) k : W8.t =
@@ -117,6 +101,20 @@ proof.
 by rewrite size_w64L_to_bytes Array25.size_to_list.
 qed.
 
+lemma state2bytesE st i:
+ nth W8.zero (state2bytes st) i = (stbytes st).[i].
+proof.
+case: (0 <= i < 200) => C.
+ rewrite /state2bytes.
+ have ?: 8*size (to_list st) = 200 by smt(Array25.size_to_list).
+ rewrite nth_w64L_to_bytes 1:/# W8u8.nth_to_list.
+ rewrite initiE 1:// /=.
+ by rewrite (nth_change_dfl witness) 1:/# get_to_list.
+rewrite nth_out.
+ by rewrite size_state2bytes.
+by rewrite get_out.
+qed.
+
 lemma state2bytesK:
  cancel state2bytes bytes2state.
 proof.
@@ -130,6 +128,13 @@ proof.
 move=> Esz; rewrite /bytes2state /state2bytes of_listK.
  by rewrite size_w64L_from_bytes Esz /= /#.
 by rewrite w64L_from_bytesK /chunkfill chunkpadE 1:// ifT 1:Esz 1:// 1:cats0.
+qed.
+
+lemma bytes2state0: bytes2state [] = st0.
+proof.
+rewrite /bytes2state /st0 tP => i Hi.
+rewrite get_of_list 1:// createiE //.
+by rewrite w64L_from_bytes_nil.
 qed.
 
 lemma bits2bytes2state l:
@@ -164,6 +169,14 @@ rewrite pack8bE 1:/# get_of_list 1:/#.
 by rewrite nth_take // 1:/# nth_drop 1..2:/# /#.
 qed.
 
+lemma addstate_st0 st:
+ addstate st0 st = st.
+proof.
+rewrite tP => i Hi.
+rewrite /addstate /st0 /map2.
+by rewrite initiE //= createiE //=.
+qed.
+
 op addstbytes = WArray200.map2 W8.(`^`).
 
 lemma stbytes_addstate st1 st2:
@@ -179,6 +192,8 @@ qed.
      Functional Byte-oriented specification of KECCAK1600
 ***************************************************************)
 
+
+
 (* the padding [pad10star1] is decomposed on a start-byte (which
  includes domain-separation bits) and a trailing bit  *)
 
@@ -187,6 +202,85 @@ op addratebit8 r8 (st: WArray200.t) =
 
 op addratebit r8 (st: state) =
  stwords (addratebit8 r8 (stbytes st)).
+
+(* a circuit-friendly def. of [addratebit] *)
+abbrev u64_xorbit b (w: W64.t) =
+ W64.init (fun i => if i=b then !w.[i] else w.[i]).
+
+abbrev addratebitX r8 (st: state) =
+ st.[(r8-1)%/8 <- u64_xorbit ((8*r8-1)%%64) st.[(r8-1)%/8]].
+ 
+lemma addratebitE r8 (st: state):
+ 0 < r8 <= 200 =>
+ addratebitX r8 st
+ = stwords (addratebit8 r8 (stbytes st)).
+proof.
+move => Hr8; rewrite tP => i Hi.
+rewrite initiE 1:// /= get_setE 1:/#.
+case: (i=(r8-1) %/ 8) => C1.
+ rewrite get64E pack8E wordP => b Hb.
+ rewrite initiE 1:// /= initiE 1:/# /=.
+ rewrite initiE 1:/# /= get_setE 1:/#.
+ case: (8 * i + b %/ 8 = r8 - 1).
+  rewrite mulzC C1 => C2.
+  have C2': b %/ 8 = (r8-1)%%8 by smt().
+  case: (b=(8 * r8 - 1) %% 64) => C3.
+   have C3': b %% 8 = 7 by smt().
+   rewrite initiE 1:/# /= bits8iE 1:/#.
+   rewrite -Bool.xor_true; congr.
+    smt().
+   by rewrite of_intE /int2bs /mkseq -iotaredE C3' /#.
+  have C3': b %% 8 <> 7 by smt().
+  rewrite initiE 1:/# /= bits8iE 1:/#.
+  rewrite -(Bool.xor_false st.[(r8 - 1) %/ 8].[b]).
+  congr; first smt().
+  by rewrite of_intE /int2bs /mkseq -iotaredE get_bits2w /#.
+ move => C2.
+ rewrite ifF 1:/#.
+ by rewrite initiE 1:/# /= bits8iE /#.
+rewrite get64E pack8E wordP => b Hb.
+rewrite initiE 1:// /= initiE 1:/# /=.
+rewrite get_setE 1:/# ifF 1:/# initiE 1:/# /=.
+by rewrite bits8iE /#.
+qed.
+
+(*
+(* BDEP checks... *)
+module MM = {
+ proc t1(st: state): state = {
+    var l;
+    l <- state2bytes st;
+    st <- bytes2state l;
+    return st;
+  }
+ proc t2(st: state): state = {
+    st <- addratebitX 168 st;
+    return st;
+  }
+}.
+
+op idstate (st:state): state = st.
+op addrbit (st:state): state = addratebitX 168 st.
+op ppp (st:state): bool = true.
+hoare ttt1 _st:
+ MM.t1
+ : st = _st
+ ==> res = _st.
+proc.
+cfold 1. (*obs: there's no native support for bytes... *)
+wp.
+bdep 1600 1600 [_st] [st] [st] idstate ppp.
+admitted.
+hoare ttt2 _st:
+ MM.t2
+ : st = _st
+ ==> res = addratebitX 168 _st.
+proc.
+bdep 1600 1600 [_st] [st] [st] addrbit ppp.
+admitted.
+*)
+
+
 
 (* Absorbs a byte-list [m] into the state *)
 op stateabsorb st m = addstate st (bytes2state m).
@@ -291,7 +385,7 @@ op RAWSHAKE256 (m: bytes, outlen8:int): bytes =
      Correctness wrt bit-oriented functional specification
 ***************************************************************)
 
-lemma addratebitE (r8 : int) (st : state):
+lemma addratebit_addstate (r8 : int) (st : state):
  0 < r8 && r8 <= 200 =>
  addratebit r8 st
  = addstate st (bytes2state (rcons (nseq (r8 - 1) W8.zero) (W8.of_int 128))).
@@ -361,6 +455,7 @@ lemma keccak1600_absorb_opE r r8 m ds_bits ds_byte:
  keccak1600_absorb_op r (bytes_to_bits m ++ ds_bits)
  = keccak_f1600_op (ABSORB1600 ds_byte r8 m).
 proof.
+have Hsz_m:= size_ge0 m.
 move=> Hr Hr8 [Hdsbits Hdsbyte].
 rewrite /keccak1600_absorb_op /ABSORB1600.
 (* intermediate blocks *)
@@ -375,9 +470,8 @@ rewrite /chunkremains !size_bytes_to_bits E8.
 rewrite -bytes_to_bits_drop -cats1 /stateabsorb -bytes2bits2state.
 rewrite bytes_to_bits_cat /pad10star1 -cat1s !catA -cats1 bits2state_cat addstateA !catA cat_nseq;
  1..2:smt(size_ge0).
-rewrite !size_cat !size_bytes_to_bits !size_drop;
- 1: smt(size_ge0).
-rewrite ler_maxr /=; 1:smt(size_ge0).
+rewrite !size_cat !size_bytes_to_bits !size_drop 1:/#.
+rewrite ler_maxr /= 1:/#.
 have ->: size m - size m %/ r8 * r8
          = size m %% r8 by smt().
 have ->: (- (8 * size m + size ds_bits)) - 2
@@ -389,7 +483,7 @@ have ->: (8 * size m + size ds_bits + 1) %% (8 * r8)
 have [_ ->]:= divmod_mul r8 8 (size m) (size ds_bits+1) _ _; 1..2:smt(size_ge0).
 have ->: 8 * (size m %% r8) + size ds_bits + 1 + (8 * r8 - 1 - (size m %% r8 * 8 + (size ds_bits + 1)))
          = 8*r8 - 1 by smt().
-rewrite addratebitE 1:/#; congr.
+rewrite addratebit_addstate 1:/#; congr.
  congr. 
  rewrite bits2bytes2state -catA bytes_from_bits_cat.
   by rewrite size_bytes_to_bits /#.
