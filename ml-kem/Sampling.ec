@@ -1,17 +1,17 @@
 (* General EC imports *)
-require import AllCore.
+require import AllCore List.
 require import IntDiv.
 
 from Jasmin require import JWord.
 
-from JazzEC require import Array128 Array168 Array256.
+from JazzEC require import Array25 Array32 Array128 Array168 Array256.
 
 (* Imports of "lower-level" MLKEM spec parts *)
 require import GFq.
 import Zq.
 require import Rq.
-require import Symmetric.
 
+require import Symmetric. 
 
 module Parse(XOF : XOF_t) = {
   proc sample() : poly = {

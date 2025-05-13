@@ -9,25 +9,27 @@ require import GFq.
 import Zq.
 require import Rq.
 require import Symmetric.
+import Symmetric768.
 require import Sampling.
 require import VecMat.
-import PolyMat.
+import VecMat768 PolyMat.
 require import Serialization.
-require import InnerPKE.
+import Serialization768.
+require import InnerPKE768.
 
-type publickey = InnerPKE.pkey.
-type secretkey = InnerPKE.skey* InnerPKE.pkey * W8.t Array32.t * W8.t Array32.t.
-type ciphertext = InnerPKE.ciphertext.
+type publickey = InnerPKE768.pkey.
+type secretkey = InnerPKE768.skey* InnerPKE768.pkey * W8.t Array32.t * W8.t Array32.t.
+type ciphertext = InnerPKE768.ciphertext.
 type sharedsecret = W8.t Array32.t.
 
-import InnerPKE.
-module MLKEM = {
+import InnerPKE768.
+module MLKEM768 = {
 
   proc kg_derand(coins: W8.t Array32.t * W8.t Array32.t) : publickey * secretkey = {
     var kgs,z,pk,sk,hpk;
     kgs     <- coins.`1;
     z       <- coins.`2;
-    (pk,sk) <@ InnerPKE.kg_derand(kgs);
+    (pk,sk) <@ InnerPKE768.kg_derand(kgs);
     hpk     <- H_pk pk;
     return (pk, (sk,pk,hpk,z));
   }
@@ -37,17 +39,17 @@ module MLKEM = {
     m       <- coins;
     hpk     <- H_pk pk;
     (_K,r) <- G_mhpk m hpk;
-    c       <@ InnerPKE.enc_derand(pk,m,r);
+    c       <@ InnerPKE768.enc_derand(pk,m,r);
     return (c,_K);
   }
 
   proc dec(cph : ciphertext, sk : secretkey) : sharedsecret = {
     var m,_K',r,skp,pk,hpk,z,c,_K;
     (skp,pk,hpk,z) <- sk;
-    m             <@ InnerPKE.dec(skp,cph);
+    m             <@ InnerPKE768.dec(skp,cph);
     (_K,r)        <- G_mhpk m hpk;
     _K'           <- J z cph;
-    c             <@ InnerPKE.enc_derand(pk,m,r);
+    c             <@ InnerPKE768.enc_derand(pk,m,r);
     if (c <> cph) {
       _K <- _K';
     }

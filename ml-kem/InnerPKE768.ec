@@ -8,12 +8,13 @@ from JazzEC require import Array32 Array33 Array64 Array128 Array960 Array1152.
 (* Imports of "lower-level" MLKEM spec parts *)
 require import Rq.
 require import Symmetric.
+import Symmetric768.
 require import Sampling.
 require import VecMat.
 require import Serialization.
-import PolyMat PolyVec.
+import Serialization768 VecMat768 PolyMat PolyVec.
 
-theory InnerPKE.
+theory InnerPKE768.
 
 type pkey = W8.t Array1152.t * W8.t Array32.t.
 type skey = W8.t Array1152.t.
@@ -23,7 +24,7 @@ type ciphertext = W8.t Array960.t * W8.t Array128.t.
 abbrev G_coins_ds(coins : W8.t Array32.t) = 
    G_coins (Array33.init (fun i => if i < 32 then coins.[i] else W8.of_int kvec)).
 
-module InnerPKE = {
+module InnerPKE768 = {
 
   (* Spec gives a derandomized enc that matches this code *)
   proc kg_derand(coins: W8.t Array32.t) : pkey * skey = {
@@ -141,4 +142,4 @@ module InnerPKE = {
   }
 }.
 
-end InnerPKE.
+end InnerPKE768.
