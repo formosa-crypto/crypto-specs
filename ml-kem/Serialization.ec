@@ -243,7 +243,7 @@ op [a] fromarray256(a0 a1 a2 a3 : 'a Array256.t) : 'a Array1024.t =
   Array1024.init (fun k => if 0 <= k < 256
                         then a0.[k]
                         else if 256 <= k < 512
-                             then a0.[k - 256]
+                             then a1.[k - 256]
                              else if 512 <= k < 768
                                   then a2.[k-512] 
                                   else a3.[k-768]).   
@@ -288,7 +288,7 @@ module EncDec = {
     var r : ipoly;
     r <- witness;
     i <- 0;
-    while (i < 160) {
+    while (i < 128) {
       r.[i*2+0]  <- to_uint a.[3*i] + to_uint a.[3*i+1] %% 2^4 * 2^8;
       r.[i*2+1]  <- to_uint a.[3*i+2] * 2^4 + to_uint a.[3*i+1] %/ 2^4;
       i <- i + 1;
@@ -297,14 +297,25 @@ module EncDec = {
   }
 
   proc decode5(a : W8.t Array160.t) : ipoly = {
-    var i;
+    var i,j,b1,b2,b3,b4,b5;
     var r : ipoly;
     r <- witness;
-    i <- 0;
-    while (i < 128) {
-      r.[i*2+0]  <- to_uint a.[i] %% 16;
-      r.[i*2+1]  <- to_uint a.[i] %/ 16;
-      i <- i + 1;
+    j <- 0; i <- 0; 
+    while (i < 160) {
+      b1 <- a.[i];
+      b2 <- a.[i+1];
+      b3 <- a.[i+2];
+      b4 <- a.[i+3];
+      b5 <- a.[i+4];
+      r.[j]  <- to_uint b1 %% 2^5; j <- j + 1;
+      r.[j]  <- to_uint b1 %/ 2^5 + (to_uint b2 %% 2^2) * 2^3; j <- j + 1;
+      r.[j]  <- (to_uint b2 %/ 2^2) %% 2^5; j <- j + 1;
+      r.[j]  <- to_uint b2 %/ 2^7 + (to_uint b3 %% 2^4) * 2^1; j <- j + 1;
+      r.[j]  <- to_uint b3 %/ 2^4 + (to_uint b4 %% 2^1) * 2^4; j <- j + 1;
+      r.[j]  <- (to_uint b4 %/ 2^1) %% 2^5; j <- j + 1;
+      r.[j]  <- to_uint b4 %/ 2^6 + (to_uint b5 %% 2^3) * 2^2; j <- j + 1;
+      r.[j] <- (to_uint b5) %/ 2^3; j <- j + 1;
+      i <- i + 5;
     }
     return r;
   }
@@ -345,14 +356,25 @@ module EncDec = {
   }
 
   proc encode5(p : ipoly) : W8.t Array160.t = {
-    var fi,fi1,i,j;
+    var fi,fi1,fi2,fi3,fi4,fi5,fi6,fi7,i,j;
     var r : W8.t Array160.t;
     r <- witness;
     j <- 0; i <- 0; 
     while (i < 160) {
-      fi <- p.[j]; j <- j + 1;
+      fi  <- p.[j]; j <- j + 1;
       fi1 <- p.[j]; j <- j + 1; 
-      r.[i] <- W8.of_int (fi + fi1 * 2^4); i <- i + 1;
+      fi2 <- p.[j]; j <- j + 1;
+      fi3 <- p.[j]; j <- j + 1; 
+      fi4 <- p.[j]; j <- j + 1;
+      fi5 <- p.[j]; j <- j + 1; 
+      fi6 <- p.[j]; j <- j + 1;
+      fi7 <- p.[j]; j <- j + 1; 
+      r.[i] <- W8.of_int (fi + fi1 * 2^5);
+      r.[i+1] <- W8.of_int (fi1 %/ 2^3 + fi2 * 2^2 + fi3*2^7);
+      r.[i+2] <- W8.of_int (fi3 %/ 2^1 + fi4 * 2^4);
+      r.[i+3] <- W8.of_int (fi4 %/ 2^4 + fi5 * 2^1 + fi5 * 2^6);
+      r.[i+4] <- W8.of_int (fi6 %/ 2^2 + fi7 * 2^3);
+      i <- i + 5;
     }
     return r;
   }
@@ -379,9 +401,10 @@ module EncDec = {
 
   proc encode11_vec(u : ipolyvec) : W8.t Array1408.t = {
     var c : W8.t Array1408.t;
-    var i,j,t0,t1,t2,t3;
+    var i,j;
     c <- witness;
     j <- 0; i <- 0; 
+    (* 
     while (i < 1024) {
       t0 <- u.[i];
       t1 <- u.[i + 1];
@@ -393,7 +416,8 @@ module EncDec = {
       c.[j] <-  W8.of_int (t2 %/ 2^4 + t3 * 2^6); j <- j + 1;
       c.[j] <-  W8.of_int (t3 %/ 2^2); j <- j + 1;
       i <- i + 4;
-    }
+    } 
+    *)
     return c;
   }
 
@@ -408,9 +432,10 @@ module EncDec = {
 
   proc decode11_vec(u : W8.t Array1408.t) : ipolyvec = {
     var c : ipolyvec;
-    var i,j,t0,t1,t2,t3,t4;
+    var i,j;
     c <- witness;
     j <- 0; i <- 0; 
+    (* 
     while (i < 1024) {
       t0 <- u.[j]; t1 <- u.[j + 1]; t2 <- u.[j + 2]; t3 <- u.[j + 3]; t4 <- u.[j + 4];
       c.[i] <- to_uint t0 + (to_uint t1 %% 2^2) * 2^8;
@@ -420,6 +445,7 @@ module EncDec = {
       j <- j + 5;
       i <- i + 4;
     }
+    *)
     return c;
   }
 

@@ -18,10 +18,11 @@ from Jasmin require import JWord.
 from JazzEC require import Array25 Array32 Array34 Array64 Array128 Array168 Array256 Array384.
 from JazzEC require import Array768 Array960 Array1024 Array1088 Array1184 Array1152.
 
-require import GFq Rq Serialization Correctness.
+require import GFq Rq Serialization Correctness768.
 require import BitEncoding.
 import BitChunking BS2Int.
 (*---*) import IntID.
+import Serialization768.
 
 module EncDecAux = {
 

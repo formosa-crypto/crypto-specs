@@ -2,15 +2,15 @@ require import AllCore IntDiv RealExp StdOrder RealExp Ring List Distr DInterval
 
 from Jasmin require import JWord JUtils.
 
-from JazzEC require import Array25 Array256 Array384 Array128 Array168  Array32 Array960 Array1024 Array1152.
+from JazzEC require import Array25 Array256 Array384 Array128 Array160 Array168  Array32 Array960 Array1024 Array1152.
 
 
 (*---*) import BitEncoding BitChunking BS2Int.
 (*---*) import RField RealOrder IntOrder IntID.
 
 require import MLKEMLib DistrExtra.
-require import GFq Rq Symmetric Sampling VecMat  Serialization InnerPKE MLKEM.
-import Zq.
+require import GFq Rq Symmetric Sampling VecMat  Serialization InnerPKE1024 MLKEM1024.
+import Zq Symmetric1024 VecMat1024 Serialization1024.
 
 (* Signed representation: could go in coeff *)
 
@@ -862,8 +862,8 @@ op decode_vec(l : int, bits : bool list) = map bs2int (chunk l (take (1024*l) bi
 (* Decode Operators as Defined in the MLKEM Spec *)
 op sem_decode12(a : W8.t Array384.t) : ipoly =
    Array256.of_list 0 (decode 12 (BytesToBits (to_list a))).
-op sem_decode4(a : W8.t Array128.t) : ipoly = 
-   Array256.of_list 0 (decode 4 (BytesToBits (to_list a))).
+op sem_decode5(a : W8.t Array160.t) : ipoly = 
+   Array256.of_list 0 (decode 5 (BytesToBits (to_list a))).
 op sem_decode1(a : W8.t Array32.t) : ipoly = 
    Array256.of_list 0 (decode 1 (BytesToBits (to_list a))).
 op sem_decode10_vec(a : W8.t Array960.t) : ipolyvec = 
@@ -879,11 +879,13 @@ apply Array1024.ext_eq => k kb.
 rewrite mapiE //= initiE //=.
 case (0 <= k && k < 256). 
 + move => *. rewrite !setvE !getvE zerovE //= offunvE //=.
-rewrite !offunvK /vclamp /kvec /= mapiE //= initiE //= incoeffK; smt(modz_small).
+  rewrite !offunvK /vclamp /kvec /= mapiE //= initiE //= incoeffK; smt(modz_small).
 move => *;case (256 <= k && k < 512). 
 + move => *;rewrite !setvE !getvE zerovE //= offunvE //=. 
-rewrite !offunvK /vclamp /kvec /= mapiE 1:/# initiE 1:/#  incoeffK; smt(modz_small).
-move => *; rewrite !setvE !getvE zerovE offunvE //= mapiE 1:/# initiE 1:/# incoeffK; smt(modz_small).
+  rewrite !offunvK /vclamp /kvec /= mapiE 1:/# initiE 1:/#  incoeffK; smt(modz_small).
+move => *;case (512 <= k && k < 768). 
++ by move => *;rewrite !setvE !getvE zerovE offunvE //= offunvK /vclamp /=  /kvec /= mapiE 1:/# initiE 1:/#  incoeffK; smt(modz_small).
++ by move => *;rewrite !setvE !getvE zerovE offunvE //=  /kvec /= mapiE 1:/# initiE 1:/#  incoeffK; smt(modz_small).
 qed.
 
 lemma toipolyvecK (x : PolyVec.polyvec) :
@@ -895,6 +897,7 @@ apply Array256.tP => k kb.
 rewrite !offunvK /vclamp /kvec /=. 
 case(i = 0); 1: by move => -> /=;rewrite mapiE //= initiE //= mapiE 1:/# initiE 1:/# /= asintK /#.
 case(i = 1); 1: by move => -> /=;rewrite mapiE //= initiE //= mapiE 1:/# initiE 1:/# /= asintK /#.
+case(i = 2); 1: by move => -> /=;rewrite mapiE //= initiE //= mapiE 1:/# initiE 1:/# /= asintK /#.
 move => * /=; rewrite ifT 1:/# mapiE //= initiE //= mapiE 1:/# initiE 1:/# /= asintK /#.
 qed.
 
@@ -1598,14 +1601,14 @@ inline fill_poly.
 seq 5 11: (={rho, p, k, c} /\ (st,(j,i)){1}=(st0,ji){2} /\ k{2}=3).
  unroll {1} 5; rcondt {1} 5; first by auto.
  unroll {1} 10; rcondt {1} 10.
-  move=> &m; auto => />.
+  move=> &m; auto => /> &hr.
   rewrite take_oversize.
    apply (ler_trans 112); 2:done.
    apply (size_rejection_le' 168); 1:done.
    by rewrite size_squeezestate_i.
   smt(size_rejection_le).
  unroll {1} 15; rcondt {1} 15.
-  move=> &m; auto => />.
+  move=> &m; auto => /> &hr.
   rewrite take_oversize.
    apply (ler_trans 112); 2:done.
    apply (size_rejection_le' 168); 1:done.
@@ -1804,6 +1807,7 @@ proof.
 proc.
 inline XOF.init.
 unroll for* {1} 3;unroll for* {2} 3.
+unroll for* {1} 13; unroll for* {2} 13.
 unroll for* {1} 10; unroll for* {2} 10.
 unroll for* {1} 7; unroll for* {2} 7.
 unroll for* {1} 4; unroll for* {2} 4.
@@ -1819,18 +1823,25 @@ op sampleA(sd : W8.t Array32.t) : polymat =
         .[0, 0 <- parse sd W8.zero W8.zero]
         .[0, 1 <- parse sd W8.one W8.zero]
         .[0, 2 <- parse sd (W8.of_int 2) W8.zero]
+        .[0, 3 <- parse sd (W8.of_int 3) W8.zero]
         .[1, 0 <- parse sd W8.zero W8.one]
         .[1, 1 <- parse sd W8.one W8.one]
         .[1, 2 <- parse sd (W8.of_int 2) W8.one]
+        .[1, 3 <- parse sd (W8.of_int 3) W8.one]
         .[2, 0 <- parse sd W8.zero (W8.of_int 2)]
         .[2, 1 <- parse sd W8.one (W8.of_int 2)]
-        .[2, 2 <- parse sd (W8.of_int 2) (W8.of_int 2)].
+        .[2, 2 <- parse sd (W8.of_int 2) (W8.of_int 2)]
+        .[2, 3 <- parse sd (W8.of_int 3) (W8.of_int 2)]
+        .[3, 0 <- parse sd W8.zero (W8.of_int 3)]
+        .[3, 1 <- parse sd W8.one (W8.of_int 3)]
+        .[3, 2 <- parse sd (W8.of_int 2) (W8.of_int 3)]
+        .[3, 3 <- parse sd (W8.of_int 3) (W8.of_int 3)].
 
 lemma sampleA_sem _sd :
    phoare [ Hmodule.sampleA : arg = _sd ==> res = sampleA _sd ] = 1%r.
 proc. 
 inline *.
-do 4!(unroll for* ^while).
+do 5!(unroll for* ^while).
 auto => />.
 qed.
 
@@ -3288,7 +3299,8 @@ lemma mulvec a b :
    dotp a b = 
     invntt (basemul (ntt a.[0])%PolyVec (ntt b.[0])%PolyVec) &+
     invntt (basemul (ntt a.[1])%PolyVec (ntt b.[1])%PolyVec) &+
-    invntt (basemul (ntt a.[2])%PolyVec (ntt b.[2])%PolyVec).
+    invntt (basemul (ntt a.[2])%PolyVec (ntt b.[2])%PolyVec) &+ 
+    invntt (basemul (ntt a.[3])%PolyVec (ntt b.[3])%PolyVec).
 proof.
 rewrite -!mul_comm_ntt !invnttK.
 rewrite /dotp !getvE  => />. 
@@ -3318,7 +3330,7 @@ by rewrite !add_comm_invntt !mul_comm_invntt -nttZero !invnttK nttZero.
 qed.
 
 lemma dotpmm (a : polymat) (v : polyvec) r :
-  0 <= r < 3 =>
+  0 <= r < 4 =>
   (ntt (dotp (invnttv (offunv (fun (i : int) => (a.[r, i])%PolyMat))) (invnttv v))) =
   ((ntt_mmul a v).[r])%PolyVec.
 move => rb.

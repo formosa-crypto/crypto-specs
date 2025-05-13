@@ -1,35 +1,24 @@
-(*
-require import AllCore IntDiv FloorCeil StdOrder RealExp List.
-require import ZModP Ring.
-require import Distr DList DistrExtra DMap DInterval.
-from Jasmin require import JWord.
-require import Array25 Array32 Array34 Array64 Array128 Array168 Array256 Array384.
-require import Array1024 Array960 Array1024 Array1088 Array1184 Array1152.
-
-
-require import MLKEM.
-require import BitEncoding.
-import BitChunking BS2Int.
-*)
 require import AllCore IntDiv List Ring.
 
 from Jasmin require import JWord.
 
 from JazzEC require import Array25 Array32 Array34 Array64 Array128 Array168 Array256 Array384.
-from JazzEC require import Array1024 Array960 Array1024 Array1088 Array1184 Array1152.
+from JazzEC require import Array1024 Array1408 Array1024 Array1088 Array1184 Array1536.
 
-require import GFq Rq Serialization Correctness.
+require import GFq Rq Serialization Correctness1024.
 require import BitEncoding.
 import BitChunking BS2Int.
 (*---*) import IntID.
+import Serialization1024.
 
 module EncDecAux = {
 
-  proc encode10_vec_aux(u : ipolyvec) : W8.t Array960.t = {
-      var c : W8.t Array960.t;
-      var i,j,t0,t1,t2,t3;
+  proc encode11_vec_aux(u : ipolyvec) : W8.t Array1408.t = {
+      var c : W8.t Array1408.t;
+      var i;
       c <- witness;
       i <- 0; 
+      (* 
       while (i < 1024) {
          j <- i %/ 4 * 5;
          t0 <- u.[i];
@@ -43,14 +32,16 @@ module EncDecAux = {
          c.[j+4] <-  W8.of_int (t3 %/ 2^2);
          i <- i + 4;
       }
+      *)
       return c;
    }
 
-   proc decode10_vec_aux(u : W8.t Array960.t) : ipolyvec = {
+   proc decode11_vec_aux(u : W8.t Array1408.t) : ipolyvec = {
       var c : ipolyvec;
-      var i,j,t0,t1,t2,t3,t4;
+      var i;
       c <- witness;
       i <- 0; 
+      (* 
       while (i < 1024) {
          j <- i %/ 4 * 5;
          t0 <- u.[j]; t1 <- u.[j + 1]; t2 <- u.[j + 2]; t3 <- u.[j + 3]; t4 <- u.[j + 4];
@@ -60,6 +51,7 @@ module EncDecAux = {
          c.[i + 3] <-  to_uint t3 %/ 2^6 + (to_uint t4) * 2^2;
          i <- i + 4;
       }
+      *)
       return c;
    }
 
@@ -107,24 +99,28 @@ proc encode12_vec_aux(a : ipolyvec) : W8.t t = {
     var a1 : W8.t Array384.t;
     var a2 : W8.t Array384.t;
     var a3 : W8.t Array384.t;
+    var a4 : W8.t Array384.t;
     
     a1 <@ encode12_aux(subarray256 a 0);
     a2 <@ encode12_aux(subarray256 a 1);
     a3 <@ encode12_aux(subarray256 a 2);
+    a4 <@ encode12_aux(subarray256 a 3);
     
-    return fromarray384 a1 a2 a3;
+    return fromarray384 a1 a2 a3 a4;
   }
 
 proc decode12_vec_aux(a : W8.t t) : ipolyvec = {
     var a1 : ipoly;
     var a2 : ipoly;
     var a3 : ipoly;
+    var a4 : ipoly;
     
     a1 <@ decode12_aux(subarray384 a 0);
     a2 <@ decode12_aux(subarray384 a 1);
     a3 <@ decode12_aux(subarray384 a 2);
+    a4 <@ decode12_aux(subarray384 a 3);
     
-    return fromarray256 a1 a2 a3;
+    return fromarray256 a1 a2 a3 a4;
   }
 }.
 
@@ -132,19 +128,25 @@ proc decode12_vec_aux(a : W8.t t) : ipolyvec = {
 
 (* We just need to worry about the aux ones, since procs are equivalent.
    This is because the loop structure is too far fetched for proc op. *)
-equiv decode10_vec_aux : 
-   EncDec.decode10_vec ~ EncDecAux.decode10_vec_aux : ={arg} ==> ={res}.
+equiv decode11_vec_aux : 
+   EncDec.decode11_vec ~ EncDecAux.decode11_vec_aux : ={arg} ==> ={res}.
+admitted.
+(* 
 proc. 
 wp; while (={i,c,u} /\ 0 <= i{1} <= 1024 /\ i{1} %% 4 = 0 /\ j{1} = i{1} %/ 4 * 5); last by auto => /> /#.
 by auto => /> /#. 
 qed.
+*)
 
-equiv encode10_vec_aux : 
-   EncDec.encode10_vec ~ EncDecAux.encode10_vec_aux : ={arg} ==> ={res}.
+equiv encode11_vec_aux : 
+   EncDec.encode11_vec ~ EncDecAux.encode11_vec_aux : ={arg} ==> ={res}.
 proc. 
+admitted.
+(* 
 wp; while (={i,c,u} /\ 0 <= i{1} <= 1024 /\ i{1} %% 4 = 0 /\ j{1} = i{1} %/ 4 * 5); last by auto => /> /#.
 by auto => /> /#. 
 qed.
+*)
 
 equiv decode12_vec_aux : 
    EncDec.decode12_vec ~ EncDecAux.decode12_vec_aux : ={arg} ==> ={res} by sim.
@@ -153,11 +155,11 @@ equiv encode12_vec_aux :
    EncDec.encode12_vec ~ EncDecAux.encode12_vec_aux : ={arg} ==> ={res} by sim.
 
 
-proc op encode10_vec_aux = EncDecAux.encode10_vec_aux.
+proc op encode10_vec_aux = EncDecAux.encode11_vec_aux.
 proc op encode12_aux = EncDecAux.encode12_aux.
 proc op encode12_vec_aux = EncDecAux.encode12_vec_aux.
 
-proc op decode10_vec_aux = EncDecAux.decode10_vec_aux.
+proc op decode10_vec_aux = EncDecAux.decode11_vec_aux.
 proc op decode12_aux = EncDecAux.decode12_aux.
 proc op decode12_vec_aux = EncDecAux.decode12_vec_aux.
 
@@ -263,8 +265,10 @@ do 32!(rewrite iteriS_rw;1: by smt()).
 by rewrite iteri0 /=.
 qed.
 
+lemma sem_decode5_corr : sem_decode5 = decode5.
+admitted.
 
-lemma sem_decode4_corr : sem_decode4 = decode4.
+(* 
 proof.
 apply fun_ext => x.
 rewrite /decode4 /sem_decode4 /=. 
@@ -324,27 +328,35 @@ rewrite /of_list -(Array256.init_set witness) -JUtils.iotaredE /=.
 do 128!(rewrite iteriS_rw;1: by smt()). 
 by rewrite iteri0 /=.
 qed.
+*)
 
-
-lemma subarray384K0 (a b c : W8.t Array384.t):
+lemma subarray384K0 (a b c d : W8.t Array384.t):
    subarray384
-        (fromarray384 a b c) 0 = a.
+        (fromarray384 a b c d) 0 = a.
 proof.
 rewrite /subarray384 /fromarray384 tP => k kb.
 by rewrite initiE 1:/# /= initiE 1:/# /= /= kb /=.
 qed.
 
-lemma subarray384K1 (a b c : W8.t Array384.t):
+lemma subarray384K1 (a b c d : W8.t Array384.t):
    subarray384
-        (fromarray384 a b c) 1 = b.
+        (fromarray384 a b c d) 1 = b.
 proof.
 rewrite /subarray384 /fromarray384 tP => k kb.
 by rewrite initiE 1:/# /= initiE 1:/# /= /= ifF /#. 
 qed.
 
-lemma subarray384K2 (a b c : W8.t Array384.t):
+lemma subarray384K2 (a b c d : W8.t Array384.t):
    subarray384
-        (fromarray384 a b c) 2 = c.
+        (fromarray384 a b c d) 2 = c.
+proof.
+rewrite /subarray384 /fromarray384 tP => k kb.
+by rewrite initiE 1:/# /= initiE 1:/# /= /= ifF /#. 
+qed.
+
+lemma subarray384K3 (a b c d : W8.t Array384.t):
+   subarray384
+        (fromarray384 a b c d) 3 = d.
 proof.
 rewrite /subarray384 /fromarray384 tP => k kb.
 by rewrite initiE 1:/# /= initiE 1:/# /= /= ifF /#. 
@@ -353,10 +365,12 @@ qed.
 lemma fromarray256K ['a] (x : 'a Array1024.t) :
      fromarray256 (subarray256 x 0) 
                   (subarray256 x 1)
-                  (subarray256 x 2) = x.
+                  (subarray256 x 2)
+                  (subarray256 x 3) = x.
  rewrite /fromarray256 /subarray256; rewrite tP => k kb; rewrite initiE 1:/# /=.
  case(0<=k<256); 1: by move => *; rewrite initiE /#.
- case(256<=k<512); by move => *; rewrite initiE /#.
+ case(256<=k<512); 1: by move => *; rewrite initiE /#.
+ case(512<=k<768); by move => *; rewrite initiE /#.
 qed.
 
 
@@ -402,7 +416,9 @@ do 8!(rewrite bs2int_cons /=); rewrite bs2int_nil //=.
 by ring.
 qed.
 
-lemma sem_decode4K  : cancel decode4  encode4.
+lemma sem_decode5K  : cancel decode5  encode5.
+admitted.
+(* 
 rewrite /cancel /encode4 /= => x. 
 do 128!(rewrite iteriS_rw;1: by smt()); rewrite iteri0 => //=.
 have H : forall i j, 0 <= i < 255 => i%%2 = 0 /\ j=i+1 => W8.of_int ((decode4 x).[i] + (decode4 x).[j]*16) = x.[i%/2]; last first.
@@ -453,7 +469,7 @@ by  rewrite !size_chunk /=; smt(size_BytesToBits Array128.size_to_list).
   by rewrite get_to_list.
   by rewrite !get_w2bits.
 qed.
-
+*)
 
 lemma sem_decode12_corr : sem_decode12 = decode12_aux.
 proof.
@@ -649,19 +665,22 @@ rewrite !(nth_map witness) /=; 1..4: smt(Array1152.size_to_list size_iota Array3
 by rewrite !nth_iota 1..2:/# /= /subarray384 initiE 1:/# /= /#.
 qed. 
 
-lemma subarray256K ['a] (a b c : 'a Array256.t) :
+lemma subarray256K ['a] (a b c d : 'a Array256.t) :
      subarray256 (fromarray256 a b c) 0 = a /\
      subarray256 (fromarray256 a b c) 1 = b /\
-     subarray256 (fromarray256 a b c) 2 = c
+     subarray256 (fromarray256 a b c) 2 = c /\
+     subarray256 (fromarray256 a b c) 3 = d
 by rewrite /subarray256 /fromarray256; do split; rewrite tP => k kb; rewrite initiE 1:/# /= initiE 1:/# /=; [ rewrite ifT 1:/# /=| rewrite ifF 1:/# /= ifT 1:/# /= | rewrite ifF 1:/#  /= ifF 1: /# /=].
 
 lemma fromarray384K ['a] (x : 'a Array1152.t) :
      fromarray384 (subarray384 x 0) 
                   (subarray384 x 1)
-                  (subarray384 x 2) = x.
+                  (subarray384 x 2)
+                  (subarray384 x 3) = x.
  rewrite /fromarray384 /subarray384; rewrite tP => k kb; rewrite initiE 1:/# /=.
  case(0<=k<384); 1: by move => *; rewrite initiE /#.
- case(384<=k<1024); by move => *; rewrite initiE /#.
+ case(384<=k<768); by move => *; rewrite initiE /#.
+ case(768<=k<1024); by move => *; rewrite initiE /#.
 qed.
 
 
@@ -675,7 +694,9 @@ qed.
 
 require import StdOrder.
 import IntOrder.
-lemma sem_decode10_vec_corr : sem_decode10_vec = decode10_vec_aux.
+lemma sem_decode11_vec_corr : sem_decode11_vec = decode11_vec_aux.
+admitted.
+(* 
 proof.
 apply fun_ext => x.
 rewrite /decode10_vec_aux /sem_decode10_vec /=.
@@ -773,9 +794,11 @@ rewrite /of_list -(Array1024.init_set witness) -JUtils.iotaredE /=.
 rewrite /cc;do 192!(rewrite iteriS_rw;1: by smt()). 
 by rewrite iteri0 /=.
 qed.
+*)
 
-
-lemma sem_decode10_vecK  : cancel decode10_vec_aux  encode10_vec_aux.
+lemma sem_decode11_vecK  : cancel decode11_vec_aux  encode11_vec_aux.
+admitted.
+(* 
 rewrite /cancel /encode10_vec_aux /= => x.
 pose cc := iteri 192 _ _.
 have -> /= : cc = (cc.`1,cc.`2,cc.`3,cc.`4,cc.`5,cc.`6) by smt().
@@ -1243,6 +1266,7 @@ do 24!
 have: i \in JUtils.iotared 0 120 by smt().
 by move: {Hi} i; apply/List.allP => /=.
 qed.
+*)
 
 lemma sem_encode1K (x : ipoly) : 
    (forall i, 0 <= i < 256 => 0 <= x.[i] < 2) =>
@@ -1281,9 +1305,11 @@ case (j = 7); 1: by  move => ->; auto => /> /#.
 by smt().
 qed.
 
-lemma sem_encode4K (x : ipoly) : 
-   (forall i, 0 <= i < 256 => 0 <= x.[i] < 16) =>
-     x =  decode4 (encode4 x).
+lemma sem_encode5K (x : ipoly) : 
+   (forall i, 0 <= i < 256 => 0 <= x.[i] < 32) =>
+     x =  decode5 (encode5 x).
+admitted.
+(* 
 move => H. 
 rewrite /decode4 /=. 
 do 128!(rewrite iteriS_rw 1: /# /=). 
@@ -1317,10 +1343,13 @@ have := Array128.init_set witness (fun i =>
 rewrite -JUtils.iotaredE /= => ->. 
 by rewrite initiE /=/#.
 qed.
+*)
 
-lemma sem_encode10_vecK (x : ipolyvec) : 
-   (forall i, 0 <= i < 1024 => 0 <= x.[i] < 1024) =>
-     x =  decode10_vec_aux (encode10_vec_aux x).
+lemma sem_encode11_vecK (x : ipolyvec) : 
+   (forall i, 0 <= i < 1408 => 0 <= x.[i] < 1408) =>
+     x =  decode11_vec_aux (encode11_vec_aux x).
+admitted.
+(* 
 move => H.
 rewrite /decode10_vec_aux /=.
 do 192!(rewrite iteriS_rw 1: /# /=). 
@@ -1435,7 +1464,7 @@ rewrite ifT 1:/# ifF 1:/# ifT 1:/#.
 rewrite !of_uintK /= /#.
 
 qed.
-
+*)
 
 lemma sem_encode12_vecK (x : ipolyvec) : 
    (forall i, 0 <= i < 1024 => 0 <= x.[i] < 4096) =>
