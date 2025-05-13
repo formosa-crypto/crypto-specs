@@ -32,6 +32,7 @@ qed.
 
 
 (* ----------- BEGIN BOOL BINDINGS ---------- *)
+import Bool.
 op bool2bits (b : bool) : bool list = [b].
 op bits2bool (b: bool list) : bool = List.nth false b 0.
 
@@ -48,6 +49,15 @@ realize tosintP by move => bv => //.
 
 bind op bool (/\) "and".
 realize bvandP by move=> bv1 bv2; rewrite /bool2bits /#.
+
+bind op bool (\/) "or".
+realize bvorP by move=> bv1 bv2; rewrite /bool2bits /#.
+
+bind op bool (^^) "xor".
+realize bvxorP by move=> bv1 bv2; rewrite /bool2bits /#.
+
+bind op bool [!] "not".
+realize bvnotP by move=> bv1; rewrite /bool2bits /#.
 
 (* ----------- BEGIN W8 BINDINGS ---------- *)
 bind bitstring W8.w2bits W8.bits2w W8.to_uint W8.to_sint W8.of_int W8.t 8.
@@ -208,16 +218,12 @@ rewrite /sll_16 => bv1 bv2.
 case : (16 <= to_uint bv2); last first.
 + rewrite /(`<<`) W16.to_uint_shl; 1: by smt(W8.to_uint_cmp).
   rewrite /truncateu8  => bv2bnd />.
-  rewrite (pmod_small (to_uint bv2) _).
-   smt(W16.to_uint_cmp).
-  rewrite (pmod_small (to_uint bv2) _).
+  rewrite (pmod_small (to_uint bv2) _) //.
   smt(W16.to_uint_cmp).
-  done.
 move => *. 
 have -> : to_uint bv2 = (to_uint bv2 - 16) + 16 by ring. 
 by rewrite exprD_nneg 1,2:/# /= /#.
 qed.
-
 
 op sra_16 (w1 w2 : W16.t) : W16.t =
 W16.sar w1 (to_uint w2).
@@ -991,6 +997,16 @@ bind op [W64.t & Array25.t] init_25_64 "ainit".
 realize bvainitP.
 proof.
 rewrite /init_25_64 => f.
+rewrite BVA_Top_Array25_Array25_t.tolistP.
+by apply eq_in_mkseq => i i_bnd; smt(Array25.initE).
+qed.
+
+op init_25_256 (f: int -> W256.t) = Array25.init f.
+
+bind op [W256.t & Array25.t] init_25_256 "ainit".
+realize bvainitP.
+proof.
+rewrite /init_25_256 => f.
 rewrite BVA_Top_Array25_Array25_t.tolistP.
 by apply eq_in_mkseq => i i_bnd; smt(Array25.initE).
 qed.
