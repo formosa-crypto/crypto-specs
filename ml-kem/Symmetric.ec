@@ -13,10 +13,10 @@ op SHAKE_256_1120_32 (x: W8.t Array32.t, y: W8.t Array960.t * W8.t Array128.t): 
 op SHA3_256_1184_32 (x: W8.t Array1152.t * W8.t Array32.t): W8.t Array32.t =
  Array32.of_list W8.zero (SHA3_256 (to_list x.`1 ++ to_list x.`2)).
 
-op SHAKE_256_1568_32 (x: W8.t Array32.t, y: W8.t Array1408.t * W8.t Array160.t): W8.t Array32.t =
+op SHAKE_256_1600_32 (x: W8.t Array32.t, y: W8.t Array1408.t * W8.t Array160.t): W8.t Array32.t =
  Array32.of_list W8.zero (SHAKE256 (to_list x ++ to_list y.`1 ++ to_list y.`2) 32).
 
-op SHA3_256_1588_32 (x: W8.t Array1536.t * W8.t Array32.t): W8.t Array32.t =
+op SHA3_256_1568_32 (x: W8.t Array1536.t * W8.t Array32.t): W8.t Array32.t =
  Array32.of_list W8.zero (SHA3_256 (to_list x.`1 ++ to_list x.`2)).
 
 op SHA3_512_33_64 (x: W8.t Array33.t): W8.t Array32.t * W8.t Array32.t =
@@ -79,8 +79,8 @@ theory Symmetric1024.
 op G_coins = SHA3_512_33_64.
 op G_mhpk  = SHA3_512_64_64.
 
-op H_pk  = SHA3_256_1588_32.
+op H_pk  = SHA3_256_1568_32.
 
-op J = SHAKE_256_1568_32.
+op J = SHAKE_256_1600_32.
 
 end Symmetric1024.
