@@ -119,8 +119,8 @@ module InnerPKE1024 = {
     u <- invnttv (ntt_mmul aT rhat) + e1;
     mp <@ EncDec.decode1(m);
     v <- invntt (ntt_dotp that rhat) &+ e2 &+ decompress_poly 1 mp; 
-    c1 <@ EncDec.encode11_vec(compress_polyvec 10 u); 
-    c2 <@ EncDec.encode5(compress_poly 4 v);
+    c1 <@ EncDec.encode11_vec(compress_polyvec 11 u); 
+    c2 <@ EncDec.encode5(compress_poly 5 v);
     return (c1,c2);
   }
 
@@ -131,9 +131,9 @@ module InnerPKE1024 = {
     s <- witness;
     (c1,c2) <- cph;
     ui <@ EncDec.decode11_vec(c1);
-    u <- decompress_polyvec 10 ui;
+    u <- decompress_polyvec 11 ui;
     vi <@ EncDec.decode5(c2);
-    v <- decompress_poly 4 vi;
+    v <- decompress_poly 5 vi;
     si <@ EncDec.decode12_vec(sk);
     s <- ofipolyvec si;
     mp <- v &+ ((&-) (invntt (ntt_dotp s (nttv u))));
