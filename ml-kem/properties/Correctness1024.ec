@@ -1081,7 +1081,7 @@ proof.
 by rewrite size_takel //=; apply needed_blocksP.
 qed.
 
-abbrev idx_from_pos pos = ((* row *) pos %/ 3, (* column *) pos %% 3).
+abbrev idx_from_pos pos = ((* row *) pos %/ 4, (* column *) pos %% 4).
 
 op pos2ji (pos: int) (t: bool): W8.t*W8.t =
  let rc = idx_from_pos pos  in
