@@ -67,8 +67,8 @@ module InnerPKE1024 = {
     s <- nttv s;
     e <- nttv e; 
     t <- ntt_mmul a s + e;
-    tv <@ EncDec.encode12_vec(toipolyvec t); (* minimum residues *)
-    sv <@ EncDec.encode12_vec(toipolyvec s); (* minimum residues *)
+    tv <- encode12_vec(toipolyvec t); (* minimum residues *)
+    sv <- encode12_vec(toipolyvec s); (* minimum residues *)
     return ((tv,rho),sv);
   }
 
@@ -87,7 +87,7 @@ module InnerPKE1024 = {
     that <- witness;
     (tv,rho) <- pk;
     _N <- 0;
-    thati <@ EncDec.decode12_vec(tv); 
+    thati <- decode12_vec(tv); 
     that <- ofipolyvec thati;
     i <- 0;
     while (i < kvec) {
@@ -117,10 +117,10 @@ module InnerPKE1024 = {
     e2 <@ CBD2.sample(PRF coins (W8.of_int _N));
     rhat <- nttv rv;
     u <- invnttv (ntt_mmul aT rhat) + e1;
-    mp <@ EncDec.decode1(m);
+    mp <- decode1(m);
     v <- invntt (ntt_dotp that rhat) &+ e2 &+ decompress_poly 1 mp; 
-    c1 <@ EncDec.encode11_vec(compress_polyvec 11 u); 
-    c2 <@ EncDec.encode5(compress_poly 5 v);
+    c1 <- encode11_vec(compress_polyvec 11 u); 
+    c2 <- encode5(compress_poly 5 v);
     return (c1,c2);
   }
 
@@ -130,14 +130,14 @@ module InnerPKE1024 = {
     u <- witness;
     s <- witness;
     (c1,c2) <- cph;
-    ui <@ EncDec.decode11_vec(c1);
+    ui <- decode11_vec(c1);
     u <- decompress_polyvec 11 ui;
-    vi <@ EncDec.decode5(c2);
+    vi <- decode5(c2);
     v <- decompress_poly 5 vi;
-    si <@ EncDec.decode12_vec(sk);
+    si <- decode12_vec(sk);
     s <- ofipolyvec si;
     mp <- v &+ ((&-) (invntt (ntt_dotp s (nttv u))));
-    m <@ EncDec.encode1(compress_poly 1 mp);
+    m <- encode1(compress_poly 1 mp);
     return m;
   }
 }.

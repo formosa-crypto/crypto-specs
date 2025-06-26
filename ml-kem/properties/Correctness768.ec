@@ -852,25 +852,6 @@ by smt(dR_fu duni_elem_fu).
 (****************************************************************************)
 
 
-require import BitEncoding.
-import BitChunking.
-
-op BytesToBits(bytes : W8.t list) : bool list = flatten (map W8.w2bits bytes).
-op decode(l : int, bits : bool list) = map bs2int (chunk l (take (256*l) bits)).
-op decode_vec(l : int, bits : bool list) = map bs2int (chunk l (take (768*l) bits)).
-
-(* Decode Operators as Defined in the MLKEM Spec *)
-op sem_decode12(a : W8.t Array384.t) : ipoly =
-   Array256.of_list 0 (decode 12 (BytesToBits (to_list a))).
-op sem_decode4(a : W8.t Array128.t) : ipoly = 
-   Array256.of_list 0 (decode 4 (BytesToBits (to_list a))).
-op sem_decode1(a : W8.t Array32.t) : ipoly = 
-   Array256.of_list 0 (decode 1 (BytesToBits (to_list a))).
-op sem_decode10_vec(a : W8.t Array960.t) : ipolyvec = 
-   Array768.of_list 0 (decode_vec 10 (BytesToBits (to_list a))).
-op sem_decode12_vec(a : W8.t Array1152.t) : ipolyvec = 
-   Array768.of_list 0 (decode_vec 12 (BytesToBits (to_list a))).
-
 lemma ofipolyvecK_small (x : ipolyvec) :
     (forall k, 0 <= k < 768 => 0 <= x.[k] < q) =>  toipolyvec (ofipolyvec x) = x.
 move => bnd.
