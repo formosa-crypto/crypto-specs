@@ -97,15 +97,134 @@ lemma fromarray256K ['a] (x : 'a Array768.t) :
  case(256<=k<512); by move => *; rewrite initiE /#.
 qed.
 
+lemma BitsToBytesK x : 8 %| size x => BytesToBits (BitsToBytes x) = x.
+move => Hx.
+rewrite /BitsToBytes /BytesToBits.
+rewrite -map_comp /(\o) /=.
+have [H _]:= (eq_in_map (fun (x0 : bool list) => w2bits (W8.bits2w x0)) idfun (chunk 8 x)).
+rewrite H;1: by move => x0 memX0 /=; rewrite W8.bits2wK; smt(in_chunk_size).
+rewrite map_id chunkK //.
+qed.
 
-lemma sem_decode1K  : cancel decode1  encode1.
-admitted.
+lemma BytesToBitsK x : (BitsToBytes (BytesToBits x)) = x.
+rewrite /BitsToBytes /BytesToBits.
+rewrite flattenK;1,2: smt(mapP W8.size_w2bits).
+rewrite -map_comp /(\o).
+have [H _]:= (eq_in_map (fun (x0 : W8.t) => W8.bits2w (W8.w2bits x0)) idfun x).
+rewrite H;1: by move => x0 memX0 /=.
+by smt(map_id).
+qed.
+
+lemma encodeK n l : 
+    1 <= n <= 12 => 8 %| n*size l => all (fun i => 0 <= i < 2^n) l => l  = (decode n) (encode n l).
+move => Hn Hsize Hrng.
+rewrite /encode /decode /cancel.
+have Hsize' : size l = size (map bs2int (chunk n (BytesToBits (BitsToBytes (flatten (map (int2bs n) l)))))).
++ rewrite size_map BitsToBytesK. 
+  + rewrite (EclibExtra.size_flatten' n);1:by smt(mapP size_int2bs).
+    rewrite size_map /#. 
+  rewrite size_chunk 1:/#.
+  rewrite (EclibExtra.size_flatten' n);1:by smt(mapP size_int2bs).
+  by rewrite size_map /#.
+apply (eq_from_nth witness);1: by exact Hsize'.
+move => i ib.
+rewrite  (nth_map []); 1:smt(size_map).
+rewrite BitsToBytesK. 
++ rewrite (EclibExtra.size_flatten' n);1:by smt(mapP size_int2bs).
+  by rewrite size_map /#.
+rewrite JWordList.nth_chunk 1,2:/#.
++ rewrite (EclibExtra.size_flatten' n);1:by smt(mapP size_int2bs).
+  rewrite size_map (: n*i + n = n * (i+1)) 1:/#. 
+  by apply StdOrder.IntOrder.ler_pmul2l; smt(). 
+have -> : (take n (drop (n * i) (flatten (map (int2bs n) l)))) = (nth [] (map (int2bs n) l) i); last by rewrite (nth_map witness _ _ _ _ ib) int2bsK 1:/#;smt(all_nthP).
+apply (eq_from_nth witness).
++ rewrite size_take_le 1:/# ifT.
+  + rewrite size_drop 1:/# (EclibExtra.size_flatten' n);1:smt(mapP size_int2bs). 
+    rewrite size_map /max (: n * size l - n * i = n * (size l - i)) 1:/#.
+    rewrite (: 0 < n * (size l - i)) /=;1:smt(StdOrder.IntOrder.divr_gt0). 
+    have := StdOrder.IntOrder.ler_pmul2l n _ 1 (size l -i);smt().
+    by rewrite (nth_map witness _ _ _ _ ib) size_int2bs /#.    
+move => ii iib. 
+have ? : size (take n (drop (n * i) (flatten (map (int2bs n) l)))) = n. 
+rewrite size_take_le 1:/# ifT //. 
+  + rewrite size_drop 1:/# (EclibExtra.size_flatten' n);1:smt(mapP size_int2bs). 
+    rewrite size_map /max (: n * size l - n * i = n * (size l - i)) 1:/#.
+    rewrite (: 0 < n * (size l - i)) /=.
+    have := StdOrder.IntOrder.divr_gt0 n (size l - i) _ _;1..3:smt(). 
+    by have := StdOrder.IntOrder.ler_pmul2l n _ 1 (size l -i);smt().
+have {2}-> : ii = (i*n + ii) %% n  by rewrite modzMDl modz_small; smt().
+have {2}-> : i = (i*n + ii) %/ n by smt().
+rewrite -nth_flatten;1: by rewrite allP => x; rewrite mapP => He /=;elim He;smt(size_int2bs).
+rewrite nth_take 1,2:/# nth_drop 1,2:/#. 
+by smt().
+qed.
+
+lemma size_decode k n l :
+ 1 <= k <= 4  =>
+ 1 <= n <= 12 => size l = k*32*n =>  size (decode n l) = k*256. 
+move => Hn Hsize.
+rewrite /decode size_map size_chunk 1:/# /BytesToBits (EclibExtra.size_flatten' 8);1:smt(mapP W8.size_w2bits).
+by rewrite size_map /#.
+qed.
+
+lemma size_encode k n l :
+ 1 <= k <= 4  =>
+ 1 <= n <= 12 => size l = k*256 =>  size (encode n l) = k*32*n. 
+move => Hn Hsize.
+rewrite /encode size_map size_chunk 1:/# /BytesToBits (EclibExtra.size_flatten' n); 1:smt(mapP size_int2bs).
+by rewrite size_map /#.
+qed.
+
+
+lemma size_BytesToBits_list l : 
+  size (BytesToBits l) = 8*size l.
+rewrite /BytesToBits (EclibExtra.size_flatten' 8).
++ move => x; rewrite mapP => He; elim He;smt(W8.size_w2bits).
+by rewrite size_map.
+qed.
+
+lemma decodeK n l :
+  1 <= n <= 12 => n %| 8*size l => l = (encode n) (decode n l).
+move => Hn Hsize.
+rewrite /encode /decode /cancel.
+have Hsize' : size l = size (BitsToBytes (flatten (map (int2bs n) (map bs2int (chunk n (BytesToBits l)))))).
++ rewrite /BitsToBytes size_map size_chunk 1:/# (EclibExtra.size_flatten' n).
+  + move => x; rewrite mapP => He;elim He.
+    smt(size_int2bs).
+  rewrite !size_map size_iota /BytesToBits (EclibExtra.size_flatten' 8).
+  + move => x; rewrite mapP => He;elim He.
+    smt(W8.size_w2bits).
+  rewrite size_map.
+  rewrite /max;case (0 < 8 * size l %/ n);1:smt().
+  smt(divz_ge0 size_ge0).
+rewrite -map_comp /(\o). 
+have [ H _] := eq_in_map (fun (x : bool list) => int2bs n (bs2int x)) idfun (chunk n (BytesToBits l)).
+rewrite H /=; 1:smt(in_chunk_size bs2intK).
+rewrite map_id chunkK 1:/#. 
+rewrite size_BytesToBits_list /#.
+by rewrite BytesToBitsK.
+qed.
+
+lemma sem_decode1K  : cancel decode1  encode1. 
+rewrite /cancel /encode1 /decode1 => x.
+rewrite of_listK;1: by rewrite (size_decode 1); [by smt() | by smt()| by rewrite Array32.size_to_list /= | ].
+rewrite -decodeK 1:/#;1:smt().
+by apply Array32.to_listK.
+qed.
 
 lemma sem_decode4K  : cancel decode4  encode4.
-admitted.
+rewrite /cancel /encode4 /decode4 => x.
+rewrite of_listK;1: by rewrite (size_decode 1); [by smt() | by smt()|  by rewrite Array128.size_to_list /= | ].
+rewrite -decodeK 1:/#;1:smt().
+by apply Array128.to_listK.
+qed.
 
 lemma sem_decode12K  : cancel decode12  encode12.
-admitted.
+rewrite /cancel /encode12 /decode12 => x.
+rewrite of_listK;1: by rewrite (size_decode 1); [by smt() | by smt()|  by rewrite Array384.size_to_list /= | ].
+rewrite -decodeK 1:/#;1: smt(Array384.size_to_list).
+by apply Array384.to_listK.
+qed.
 
 lemma subarray256K ['a] (a b c : 'a Array256.t) :
      subarray256 (fromarray256 a b c) 0 = a /\
@@ -124,37 +243,82 @@ qed.
 
 
 lemma sem_decode12_vecK  : cancel decode12_vec  encode12_vec.
-admitted.
+rewrite /cancel /encode12_vec /decode12_vec => x.
+apply tP => k kb.
+rewrite get_of_list //. 
+rewrite of_listK /=;1: by rewrite (size_decode 3) /=;  [by smt() | by smt()|  by rewrite Array1152.size_to_list /= | ].
+rewrite -decodeK 1:/#;1: smt(Array1152.size_to_list). 
+rewrite (nth_change_dfl witness W8.zero);1: smt(Array1152.size_to_list). 
+by smt().
+qed.
 
 require import StdOrder.
 import IntOrder.
 
 
 lemma sem_decode10_vecK  : cancel decode10_vec  encode10_vec.
-admitted.
+rewrite /cancel /encode10_vec /decode10_vec => x.
+apply Array960.tP => k kb.
+rewrite get_of_list //. 
+rewrite of_listK /=;1: by rewrite (size_decode 3) /=;  [by smt() | by smt()|  by rewrite Array960.size_to_list /= | ].
+rewrite -decodeK 1:/#;1: smt(Array960.size_to_list). 
+rewrite (nth_change_dfl witness W8.zero);1: smt(Array960.size_to_list). 
+by smt().
+qed.
 
 lemma sem_encode1K (x : ipoly) : 
    (forall i, 0 <= i < 256 => 0 <= x.[i] < 2) =>
      x = (decode1 (encode1 x)).
-admitted.
+move => Hi;rewrite /encode1 /decode1.
+apply Array256.tP => k kb.
+rewrite get_of_list // of_listK; 1: by rewrite (size_encode 1) /=;  [by smt() | by smt()|  by rewrite Array256.size_to_list /= | ].
+rewrite -encodeK 1:/#;[smt(Array256.size_to_list) | rewrite /= allP /= /to_list;smt(mkseqP) | ].
+rewrite -(get_to_list ).
+by rewrite (nth_change_dfl witness 0);1: smt(Array256.size_to_list). 
+qed.
 
 lemma sem_encode4K (x : ipoly) : 
    (forall i, 0 <= i < 256 => 0 <= x.[i] < 16) =>
      x =  decode4 (encode4 x).
-admitted.
+move => Hi;rewrite /encode4 /decode4.
+apply Array256.tP => k kb.
+rewrite get_of_list // of_listK; 1: by rewrite (size_encode 1) /=;  [by smt() | by smt()|  by rewrite Array256.size_to_list /= | ].
+rewrite -encodeK 1:/#;[smt(Array256.size_to_list) | rewrite /= allP /= /to_list;smt(mkseqP) | ].
+rewrite -(get_to_list ).
+by rewrite (nth_change_dfl witness 0);1: smt(Array256.size_to_list). 
+qed.
 
 lemma sem_encode10_vecK (x : ipolyvec) : 
    (forall i, 0 <= i < 768 => 0 <= x.[i] < 1024) =>
      x =  decode10_vec (encode10_vec x).
-admitted.
+move => Hi;rewrite /encode10_vec /decode10_vec.
+apply Array768.tP => k kb.
+rewrite get_of_list // of_listK; 1: by rewrite (size_encode 3) /=;  [by smt() | by smt()|  by rewrite Array768.size_to_list /= | ].
+rewrite -encodeK 1:/#;[smt(Array768.size_to_list) | rewrite /= allP /= /to_list;smt(mkseqP) | ].
+rewrite -(get_to_list ).
+by rewrite (nth_change_dfl witness 0);1: smt(Array768.size_to_list). 
+qed.
 
 lemma sem_encode12_vecK (x : ipolyvec) : 
    (forall i, 0 <= i < 768 => 0 <= x.[i] < 4096) =>
      x =  decode12_vec(encode12_vec x).
-admitted.
+move => Hi;rewrite /encode12_vec /decode12_vec.
+apply Array768.tP => k kb.
+rewrite get_of_list // of_listK; 1: by rewrite (size_encode 3) /=;  [by smt() | by smt()|  by rewrite Array768.size_to_list /= | ].
+rewrite -encodeK 1:/#;[smt(Array768.size_to_list) | rewrite /= allP /= /to_list;smt(mkseqP) | ].
+rewrite -(get_to_list ).
+by rewrite (nth_change_dfl witness 0);1: smt(Array768.size_to_list). 
+qed.
+
 
 require import BitEncoding.  
 import BS2Int BitChunking.
 lemma decode1_bnd a k : 0<=k<256 => 0<= (decode1 a).[k] < 2.
 proof.
-admitted. 
+move => ?; rewrite /decode1 get_of_list // /decode (nth_map witness).
++ by rewrite size_chunk 1:/# size_BytesToBits size_to_list //=.
+have := bs2int_le2Xs (nth witness (chunk 1 (BytesToBits (to_list a))) k).
+rewrite size_nth_chunk //=;1: by rewrite size_BytesToBits size_to_list //=.
+by smt(bs2int_ge0).
+qed.
+

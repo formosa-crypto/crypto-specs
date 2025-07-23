@@ -22,21 +22,14 @@ op ofipoly(p : ipoly)  : poly = map incoeff p.
 (* Encode/Decode Operators as Defined in the MLKEM Spec *)
 op BytesToBits(bytes : W8.t list) : bool list = flatten (map W8.w2bits bytes).
 op BitsToBytes(bits : bool list) : W8.t list = map W8.bits2w (chunk 8 bits).
-op encode(l : int, ints : int list) : bool list list = map (int2bs l) ints.
-op decode(l : int, bits : bool list) : int list = map bs2int (chunk l bits).
+op encode(l : int, ints : int list) : W8.t list = BitsToBytes (flatten (map (int2bs l) ints)).
+op decode(l : int, bytes : W8.t list) : int list = map bs2int (chunk l (BytesToBits (bytes))).
 
-op encode12(a : ipoly) :  W8.t Array384.t =
-   Array384.of_list W8.zero (BitsToBytes (flatten (encode 12 (to_list a)))).
+op encode12(a : ipoly) :  W8.t Array384.t = Array384.of_list W8.zero (encode 12 (to_list a)).
+op encode1(a : ipoly) :  W8.t Array32.t = Array32.of_list W8.zero (encode 1 (to_list a)).
 
-
-op encode1(a : ipoly) :  W8.t Array32.t =
-   Array32.of_list W8.zero (BitsToBytes (flatten (encode 1 (to_list a)))).
-
-op decode12(a : W8.t Array384.t) : ipoly =
-   Array256.of_list 0 (decode 12 (BytesToBits (to_list a))).
-
-op decode1(a : W8.t Array32.t) : ipoly = 
-   Array256.of_list 0 (decode 1 (BytesToBits (to_list a))).
+op decode12(a : W8.t Array384.t) : ipoly = Array256.of_list 0 (decode 12 (to_list a)).
+op decode1(a : W8.t Array32.t) : ipoly =  Array256.of_list 0 (decode 1 (to_list a)).
 
 theory Serialization768.
 
@@ -80,23 +73,17 @@ op decompress_polyvec(d : int, p : ipolyvec) =
          .[2 <- map (decompress d) (subarray256 p 2)].
 
 
-op encode4(a : ipoly) :  W8.t Array128.t =
-   Array128.of_list W8.zero (BitsToBytes (flatten (encode 4 (to_list a)))).
+op encode4(a : ipoly) :  W8.t Array128.t = Array128.of_list W8.zero (encode 4 (to_list a)).
 
-op decode4(a : W8.t Array128.t) : ipoly = 
-   Array256.of_list 0 (decode 4 (BytesToBits (to_list a))).
+op decode4(a : W8.t Array128.t) : ipoly =  Array256.of_list 0 (decode 4 (to_list a)).
 
-op encode10_vec(a :ipolyvec) : W8.t Array960.t = 
-   Array960.of_list W8.zero (BitsToBytes (flatten (encode 10 (to_list a)))).
+op encode10_vec(a :ipolyvec) : W8.t Array960.t =  Array960.of_list W8.zero (encode 10 (to_list a)).
 
-op decode10_vec(a : W8.t Array960.t) : ipolyvec = 
-   Array768.of_list 0 (decode 10 (BytesToBits (to_list a))).
+op decode10_vec(a : W8.t Array960.t) : ipolyvec =  Array768.of_list 0 (decode 10 (to_list a)).
 
-op encode12_vec(a :ipolyvec) : W8.t Array1152.t = 
-   Array1152.of_list W8.zero (BitsToBytes (flatten (encode 12 (to_list a)))).
+op encode12_vec(a :ipolyvec) : W8.t Array1152.t = Array1152.of_list W8.zero (encode 12 (to_list a)).
 
-op decode12_vec(a : W8.t Array1152.t) : ipolyvec = 
-   Array768.of_list 0 (decode 12 (BytesToBits (to_list a))).
+op decode12_vec(a : W8.t Array1152.t) : ipolyvec =  Array768.of_list 0 (decode 12 (to_list a)).
 
 end Serialization768.
 
@@ -149,22 +136,22 @@ op decompress_polyvec(d : int, p : ipolyvec) =
 
 
 op encode5(a : ipoly) :  W8.t Array160.t =
-   Array160.of_list W8.zero (BitsToBytes (flatten (encode 5 (to_list a)))).
+   Array160.of_list W8.zero  (encode 5 (to_list a)).
 
 op decode5(a : W8.t Array160.t) : ipoly = 
-   Array256.of_list 0 (decode 5 (BytesToBits (to_list a))).
+   Array256.of_list 0 (decode 5 (to_list a)).
 
 op encode11_vec(a :ipolyvec) : W8.t Array1408.t = 
-   Array1408.of_list W8.zero (BitsToBytes (flatten (encode 11 (to_list a)))).
+   Array1408.of_list W8.zero (encode 11 (to_list a)).
 
 op decode11_vec(a : W8.t Array1408.t) : ipolyvec = 
-   Array1024.of_list 0 (decode 11 (BytesToBits (to_list a))).
+   Array1024.of_list 0 (decode 11 (to_list a)).
 
 op encode12_vec(a :ipolyvec) : W8.t Array1536.t = 
-   Array1536.of_list W8.zero (BitsToBytes (flatten (encode 12 (to_list a)))).
+   Array1536.of_list W8.zero (encode 12 (to_list a)).
 
 op decode12_vec(a : W8.t Array1536.t) : ipolyvec = 
-   Array1024.of_list 0 (decode 12 (BytesToBits (to_list a))).
+   Array1024.of_list 0 (decode 12 (to_list a)).
 
 end Serialization1024.
 
