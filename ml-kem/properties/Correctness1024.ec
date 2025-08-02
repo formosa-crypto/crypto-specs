@@ -363,15 +363,28 @@ move => *;case (d = 4).
 by smt().
 qed.
 
+(* This is the implementation of compress d in C/Jasmin for d = 5 *)
+op compress_alt5(c : coeff) : int =
+    (asint c * 32 + ((q - 1) %/ 2)) * (2^27 %/ q + 1) %/ 2^27 %% 32.
+
+lemma compress_alt_compress5 c :    
+      compress_alt5 c = compress 5 c.
+proof.
+rewrite compress_alt_nice /compress_alt5 qE =>  /=.
++ by  have  : all
+     (fun x => (x * 32 + 1664) * 40318 %/ 134217728 %% 32 = (x * 32 + 1664) %/ 3329 %% 32) 
+        (iota_ 0 3229); [by rewrite -iotaredE //= | smt(mem_iota gtp_asint ge0_asint)].
+qed.
+
 (* This is the implementation of compress d in C/Jasmin for d = 10 *)
 op compress_alt_large (c : coeff) : int = 
-   (asint c * 2 ^ 10 + (q + 1) %/ 2) * (2 ^ 32 %/ q) %/ 2 ^ 32 %% 2 ^ 10.
+   (asint c * 2 ^ 11 + (q - 1) %/ 2) * (2 ^ 31 %/ q + 1) %/ 2 ^ 31 %% 2 ^ 11.
 
 lemma compress_alt_compress_large (c : coeff): 
-    compress_alt_large c = compress 10 c.
+    compress_alt_large c = compress 11 c.
 rewrite compress_alt_nice /compress_alt_large qE =>  /=.
 by have ? : all
-     (fun x => (x * 1024 + 1665) * 1290167 %/ 4294967296 %% 1024 = (x * 1024 + 1664) %/ 3329 %% 1024) 
+     (fun x => (x * 2048 + 1664) * 645084 %/ 2147483648 %% 2048 = (x * 2048 + 1664) %/ 3329 %% 2048) 
         (iota_ 0 3229); [by rewrite -iotaredE //= | smt(mem_iota gtp_asint ge0_asint)].
 qed.
 
@@ -380,7 +393,7 @@ op decompress_alt(d : int, c : int) : coeff =
     incoeff (((c * q + 2^(d-1)) %/ 2^d)).
 
 lemma decompress_alt_decompress c d : 
-   0 < d => d<=10 =>
+   0 < d => d<=11 =>
     decompress_alt d c = decompress d c.
 proof.
 move => *.
