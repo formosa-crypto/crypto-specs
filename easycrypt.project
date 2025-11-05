@@ -1,8 +1,9 @@
 [general]
 timeout = 30
 
-provers = CVC5@1.0
-provers = Z3@4.12
+provers = Alt-Ergo@2.4
+provers = CVC5@1.2
+provers = Z3@4.8
 
 #rdirs = Jasmin:~/src/jasmin/main/eclib
 idirs = JazzEC:arrays
