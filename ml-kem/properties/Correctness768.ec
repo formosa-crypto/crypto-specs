@@ -458,28 +458,28 @@ decryption failure bound.
 require import PolyReduce. print PolyReduce.
 clone import PolyReduce as RqTheory with
    op n <- 256,
-   type BasePoly.coeff <- coeff,
-   op BasePoly.Coeff.(+) <- Zq.(+),
-   op BasePoly.Coeff.( *) <- Zq.( *),
-   op BasePoly.Coeff.zeror <- Zq.zero,
-   op BasePoly.Coeff.oner <- Zq.one,
-   op BasePoly.Coeff.([-]) <- Zq.([-]),
-   op BasePoly.Coeff.invr <- Zq.inv,
-   pred BasePoly.Coeff.unit <- Zq.unit
+   type coeff <- coeff,
+   op Coeff.(+) <- Zq.(+),
+   op Coeff.( *) <- Zq.( *),
+   op Coeff.zeror <- Zq.zero,
+   op Coeff.oner <- Zq.one,
+   op Coeff.([-]) <- Zq.([-]),
+   op Coeff.invr <- Zq.inv,
+   pred Coeff.unit <- Zq.unit
    rename "polyXnD1" as "AlgR"
    rename "poly" as "basepoly"
-   proof BasePoly.Coeff.addrA by apply ZqRing.addrA
-   proof BasePoly.Coeff.addrC by apply ZqRing.addrC
-   proof BasePoly.Coeff.add0r by apply ZqRing.add0r 
-   proof BasePoly.Coeff.addNr by apply ZqRing.addNr 
-   proof BasePoly.Coeff.oner_neq0 by apply ZqRing.oner_neq0
-   proof BasePoly.Coeff.mulrA by apply ZqRing.mulrA
-   proof BasePoly.Coeff.mulrC by apply ZqRing.mulrC 
-   proof BasePoly.Coeff.mul1r by apply ZqRing.mul1r 
-   proof BasePoly.Coeff.mulrDl by apply ZqRing.mulrDl 
-   proof BasePoly.Coeff.mulVr by apply ZqRing.mulVr
-   proof BasePoly.Coeff.unitP by apply ZqRing.unitP 
-   proof BasePoly.Coeff.unitout by apply ZqRing.unitout
+   proof Coeff.addrA by apply ZqRing.addrA
+   proof Coeff.addrC by apply ZqRing.addrC
+   proof Coeff.add0r by apply ZqRing.add0r 
+   proof Coeff.addNr by apply ZqRing.addNr 
+   proof Coeff.oner_neq0 by apply ZqRing.oner_neq0
+   proof Coeff.mulrA by apply ZqRing.mulrA
+   proof Coeff.mulrC by apply ZqRing.mulrC 
+   proof Coeff.mul1r by apply ZqRing.mul1r 
+   proof Coeff.mulrDl by apply ZqRing.mulrDl 
+   proof Coeff.mulVr by apply ZqRing.mulVr
+   proof Coeff.unitP by apply ZqRing.unitP 
+   proof Coeff.unitout by apply ZqRing.unitout
    proof gt0_n by auto.
    (* proof *. fix me *)
 
