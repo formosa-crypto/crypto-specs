@@ -383,9 +383,10 @@ op compress_alt_large (c : coeff) : int =
 lemma compress_alt_compress_large (c : coeff): 
     compress_alt_large c = compress 11 c.
 rewrite compress_alt_nice /compress_alt_large qE =>  /=.
-by have ? : all
+have ? : all
      (fun x => (x * 2048 + 1664) * 645084 %/ 2147483648 %% 2048 = (x * 2048 + 1664) %/ 3329 %% 2048) 
-        (iota_ 0 3229); [by rewrite -iotaredE //= | smt(mem_iota gtp_asint ge0_asint)].
+        (iota_ 0 3229); [by rewrite -iotaredE //= | ].
+congr;congr; smt(allP mem_iota gtp_asint ge0_asint).
 qed.
 
 (* This is the implementation of decompress d in C/Jasmin *)

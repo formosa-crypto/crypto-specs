@@ -2127,6 +2127,6 @@ bind circuit
     VMOVSLDUP_256 <- "VMOVSLDUP_256",
     VPBLENDW_256 <- "VPBLENDW_256",
     VPACKSS_16u16 <- "VPACKSS_16u16",
-    MOVEMASK_32u8 <- "VPMOVMSKB_u256u32" from "/usr/local/lib/easycrypt/config/avx2.spec".
+    MOVEMASK_32u8 <- "VPMOVMSKB_u256u32".
 
 
