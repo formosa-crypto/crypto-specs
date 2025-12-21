@@ -469,7 +469,7 @@ decryption failure bound.
    to be that of the base ring of polynomials, which 
    I never work with. *)
 
-require import PolyReduce. print PolyReduce.
+require import PolyReduce. 
 clone import PolyReduce as RqTheory with
    op n <- 256,
    type coeff <- coeff,
