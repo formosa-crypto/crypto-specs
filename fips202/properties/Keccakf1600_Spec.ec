@@ -6,13 +6,24 @@
 ******************************************************************************)
 require import AllCore List Int IntDiv.
 require StdOrder.
+
 import StdOrder.IntOrder.
 
-require export Bindings EclibExtra.
+require export (*Bindings*) EclibExtra.
 require export FIPS202_Keccakf1600.
+
 
 from JazzEC require import Array5 Array24.
 from JazzEC require import Array24.
+
+op init_5_64 = Array5.init <:W64.t>.
+op init_25_64 = Array25.init <:W64.t>.
+
+
+abbrev rol_64 (w1 w2 : W64.t): W64.t =
+  w1 `|<<<|` to_uint w2. 
+
+
 
 op idx_op x = idx x.
 

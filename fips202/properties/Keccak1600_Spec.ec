@@ -20,7 +20,7 @@ import BitEncoding.BitChunking.
 
 import EclibExtra.
 
-require import Bindings.
+(*require import Bindings.*)
 
 
 
@@ -465,15 +465,22 @@ rewrite (absorb_iblocks _ r8) 1..2:/#.
 (* lastblock *)
 pose ST:= stateabsorb_iblocks _ _.
 have E8: 8*size m %/ (8*r8) * (8*r8)
-        = 8*(size m %/ r8 * r8) by smt().
+        = 8*(size m %/ r8 * r8)
+ by rewrite divzMpl /#.
 rewrite /chunkremains !size_bytes_to_bits E8.
 rewrite -bytes_to_bits_drop -cats1 /stateabsorb -bytes2bits2state.
 rewrite bytes_to_bits_cat /pad10star1 -cat1s !catA -cats1 bits2state_cat addstateA !catA cat_nseq;
  1..2:smt(size_ge0).
-rewrite !size_cat !size_bytes_to_bits !size_drop 1:/#.
-rewrite ler_maxr /= 1:/#.
+rewrite !size_cat !size_bytes_to_bits !size_drop.
+ apply mulr_ge0; last smt().
+ apply divz_ge0; smt().
+rewrite ler_maxr /=.
+ rewrite subr_ge0; apply leq_trunc_div; smt().
 have ->: size m - size m %/ r8 * r8
-         = size m %% r8 by smt().
+         = size m %% r8.
+ have ?:= lez_floor (size m) r8 _.
+  smt().
+ smt().
 have ->: (- (8 * size m + size ds_bits)) - 2
          = - (8*size m + size ds_bits + 2) by smt().
 rewrite modNz //=; 1..2:smt(size_ge0).
@@ -565,13 +572,18 @@ move=> Hr; case: (outlen8 <= 0) => C.
  rewrite /SQUEEZE1600 take_le0 // iota0 1:/# /=.
  by rewrite flatten_nil /= /squeezestate take_le0 /#.
 pose L:= flatten _.
-have Lsz: size L = r8 * ((outlen8 - 1) %/ r8)
- by rewrite size_squeezeblocks /#.
+have Lsz: size L = r8 * ((outlen8 - 1) %/ r8).
+ by rewrite size_squeezeblocks 1:/# 1:divz_ge0 /#.
 rewrite /SQUEEZE1600 /L /squeezeblocks /squeezestate_i /squeezestate.
-rewrite iotaSr 1:/# map_rcons flatten_rcons.
-rewrite take_cat ifF 1:Lsz 1:/# /= take_take'.
-congr; congr.
-by rewrite Lsz /#.
+rewrite iotaSr 1:divz_ge0 1:/# 1:/# map_rcons flatten_rcons.
+rewrite take_cat ifF 1:Lsz.
+ move: C; apply contra.
+ by move: (lez_floor (outlen8-1) r8 _); smt(). 
+rewrite take_take'; congr; congr; last done.
+rewrite Lsz ler_minl.
+ move: (lez_floor (outlen8-1) r8 _); first smt().
+ rewrite mulrC => H. smt().
+smt().
 qed.
 
 lemma SQUEEZE1600_ext r8 st len1 len2:
