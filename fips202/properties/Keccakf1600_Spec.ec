@@ -310,8 +310,7 @@ while (0 <= x <= 5 /\
   auto => /> &1 Hy1 _ Hx IH HH Hy2; split; first smt().
   split.
    move => j i *.
-   rewrite get_setE 1:/#.
-   by rewrite ifF /#.
+   by rewrite get_setE 1:/# ifF 2:/#; smt(modz_small).
   move=> k Hk1 Hk2.
   rewrite get_setE. 
    by rewrite /#.
@@ -408,7 +407,7 @@ while (#pre /\ 0 <= x <= 5 /\
                (invw a.[idx(x+1,j)] `&` a.[idx(x+2,j)])).
   auto => /> &m Hy1 _ H1 Hy2 Hx1 _ H2 Hx2; split.
    move => i j Hi1 Hi2 Hj1 Hj2.
-   rewrite /= get_setE 1:/# ifF 1:/#.
+   rewrite /= get_setE 1:/# ifF; first smt(modz_small).
    by apply H1.
   split; first smt().
   move=> j Hj1 Hj2.

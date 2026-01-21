@@ -77,8 +77,12 @@ lemma size_pad10star1 r len:
 proof.
 move=> Hr Hlen.
 rewrite /pad10star1 /= size_rcons size_nseq lez_maxr 1:/#.
+case: (r=2) => Cr /=; first smt().
 rewrite -modzDml -modzNm.
-by case: (len=0) => E /#.
+rewrite -modzNm modz_mod modzDml. 
+have ->: ((-len%%r)-2) = -(len%%r+2) by smt().
+rewrite modNz 1..2:/#.
+by rewrite /= modz_small /#.
 qed.
 
 abbrev split_padded r m =

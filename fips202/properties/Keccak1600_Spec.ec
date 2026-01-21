@@ -7,10 +7,9 @@
     - correctness wrt imperative spec [FIPS202_SHA3.ec]
 
 ******************************************************************************)
-require import AllCore List Int IntDiv.
+require import AllCore List Int IntDiv StdOrder.
 
-require StdOrder.
-import StdOrder.IntOrder.
+import IntOrder.
 
 require export FIPS202_SHA3 Keccakf1600_Spec.
 require import FIPS202_SHA3_Spec.
@@ -420,8 +419,10 @@ rewrite chunk_size 1:/# !size_cat // size_chunkremains size_pad10star1
   1:/# size_bytes_to_bits; 1: smt(size_ge0).
 have ->:(8 * size m + size ds_bits) %% (8*r8)
          = 8 * size m %% (8*r8) + size ds_bits.
- by have:= divmod_mul r8 8 (size m) (size ds_bits) _ _;
+ rewrite !(mulzC 8).
+ have [_ E] := divmod_mul r8 8 (size m) (size ds_bits) _ _. smt(). 
   smt(size_ge0).
+ by rewrite E mulz_modl // /#.
 smt().
 qed.
 
@@ -569,7 +570,8 @@ lemma SQUEEZE1600_iblocks_last r8 st outlen8:
                    (outlen8 - max 0 ((outlen8-1) %/ r8 * r8)).
 proof.
 move=> Hr; case: (outlen8 <= 0) => C.
- rewrite /SQUEEZE1600 take_le0 // iota0 1:/# /=.
+ rewrite /SQUEEZE1600 take_le0 // iota0 /=.
+  by rewrite (:0=0%/r8) 1:/#; apply leq_div2r => /#.
  by rewrite flatten_nil /= /squeezestate take_le0 /#.
 pose L:= flatten _.
 have Lsz: size L = r8 * ((outlen8 - 1) %/ r8).
@@ -596,11 +598,11 @@ move=> Hr Hlen.
 rewrite take_take' ler_minl 1:/#.
 have ->: (len2-1)%/r8 + 1
  = (len1-1)%/r8 + 1 + ((len2-1)%/r8-(len1-1)%/r8) by smt().
-rewrite /squeezeblocks iota_add 1..2:/# map_cat flatten_cat.
+rewrite /squeezeblocks iota_add; first 2 smt(leq_div2r).
+rewrite map_cat flatten_cat.
 by rewrite take_cat' ifT 1:size_squeezeblocks /#.
 qed.
 
-require import StdOrder.
 lemma keccak1600_squeeze_opE r r8 st outlen outlen8:
  0 < r <= 1600 =>
  r = 8*r8 =>
@@ -611,7 +613,8 @@ proof.
 move=> Hr Hr8 Ho8.
 case: (outlen <= 0) => Hout.
  rewrite /keccak1600_squeeze_op take_le0 1:/# //.
- rewrite SQUEEZE1600_iblocks_last 1:/# iota0 1:/#  flatten_nil /=.
+ rewrite SQUEEZE1600_iblocks_last 1:/# iota0 /=.
+  by rewrite (:0=0%/r8) 1:/#; apply leq_div2r => /#.
  rewrite /squeezestate take_le0.
   smt(@IntOrder). 
  by rewrite bytes_to_bits_nil.
@@ -770,7 +773,10 @@ hoare fips202_KECCAK1600_h _ds_bits _r8 _ds_byte _m _outlen8:
 proof.
 conseq (keccak1600_h (1600-8*_r8) (bytes_to_bits _m++_ds_bits) (8*_outlen8)).
  by move=> &m H => /> /#.
-smt(keccak1600_opE).
+move => /> &m Ec ?? Em Esz ?.
+print keccak1600_opE.
+have <-:= keccak1600_opE c{m} _r8 _m _ds_bits (W8.bits2w (rcons _ds_bits true)) (8*_outlen8) _outlen8 _ _ _ _; first 4 smt().
+by rewrite /keccak1600_op; congr; smt().
 qed.
 
 phoare fips202_KECCAK1600_ph _ds_bits _r8 _ds_byte _m _outlen8:
@@ -1035,14 +1041,16 @@ sp 1; seq 3: (#pre /\ st = stateabsorb_iblocks l st0).
    by move: H; rewrite ltzE lez_divRL /#.
   congr; congr.
   rewrite drop_chunk // -nth0_head nth_chunk //=.
-   rewrite size_drop 1:/#.
+   rewrite size_drop.
+    smt(mulr_ge0).
    by move: H; rewrite ltzE lez_divRL /#.
   by rewrite drop0.
  auto => /> *; split.
   by rewrite size_chunk // drop0; smt(size_ge0).
  move=> i st Hi1 _ Hi2.
  have ->: i=size (chunk _r8 _m) by smt().
- by rewrite drop_oversize // /#.
+ rewrite drop_oversize // /stateabsorb_iblocks.
+ by rewrite -{1}cats0 foldl_cat /#.
 by auto.
 qed.
 
@@ -1090,7 +1098,8 @@ proc; case: (0 < outlen); simplify.
   auto => /> *; split. 
    by rewrite iota0 //= flatten_nil /st_i iter0 /#.
   move => /> i???.
-  by have ->//=: i=(_len-1)%/_r8+1 by smt().
+  have ?: (_len-1)%/_r8 < i by rewrite ltz_divLR /#.
+  smt().
  auto => /> Hr64_1 Hr64_2 ?.
  rewrite /SQUEEZE1600 /squeezeblocks /squeezestate_last.
  rewrite iotaSr 1:/# map_rcons flatten_rcons.
@@ -1102,8 +1111,9 @@ proc; case: (0 < outlen); simplify.
 (* corner case *)
 rcondf 3; first by auto => /> /#.
 auto => /> *.
-rewrite /SQUEEZE1600 /squeezeblocks iota0 1:/# flatten_nil.
-by rewrite /squeezestate_last /squeezestate !take_le0 /#. 
+rewrite /SQUEEZE1600 /squeezeblocks iota0.
+ by rewrite -ltzE ltz_divLR /#.
+by rewrite flatten_nil /squeezestate_last /squeezestate !take_le0 /#. 
 qed.
 
 lemma SQUEEZE1600_ll:
