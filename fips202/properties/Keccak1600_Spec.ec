@@ -416,7 +416,10 @@ proof.
 move=> Hr Hsz.
 rewrite -!catA chunk_cat' 1:/# -cats1 !catA; congr.
 rewrite chunk_size 1:/# !size_cat // size_chunkremains size_pad10star1
-  1:/# size_bytes_to_bits; 1: smt(size_ge0).
+  1:/# size_bytes_to_bits. 
+ split=> *; 1: smt(size_ge0).
+ rewrite (mulzC 8 r8) (mulzC 8).
+ by have [??] := divmod_mul r8 8 (size m) (size ds_bits) Hr _; smt(size_ge0).
 have ->:(8 * size m + size ds_bits) %% (8*r8)
          = 8 * size m %% (8*r8) + size ds_bits.
  rewrite !(mulzC 8).
@@ -583,9 +586,13 @@ rewrite take_cat ifF 1:Lsz.
  by move: (lez_floor (outlen8-1) r8 _); smt(). 
 rewrite take_take'; congr; congr; last done.
 rewrite Lsz ler_minl.
- move: (lez_floor (outlen8-1) r8 _); first smt().
- rewrite mulrC => H. smt().
-smt().
+ clear L Lsz; pose X:= (outlen8+1).
+ have: X + 1 - r8*(X %/ r8) <= r8 by smt().
+ smt().
+rewrite ler_maxr.
+ apply mulr_ge0; last smt().
+ by rewrite divz_ge0 /#.
+by rewrite  (mulzC r8).
 qed.
 
 lemma SQUEEZE1600_ext r8 st len1 len2:
