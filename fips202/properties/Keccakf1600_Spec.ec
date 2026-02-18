@@ -11,9 +11,7 @@ import StdOrder.IntOrder.
 
 require export (*Bindings*) EclibExtra.
 require export FIPS202_Keccakf1600.
-
-
-require import Keccak1600_arrays.
+require export Keccak1600_arrays.
 
 abbrev rol_64 (w1 w2 : W64.t): W64.t =
   w1 `|<<<|` to_uint w2. 

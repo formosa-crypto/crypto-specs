@@ -19,20 +19,28 @@ import BitEncoding.BitChunking.
 
 import EclibExtra.
 
-(*require import Bindings.*)
-
-
-
 
 (* sometimes it is convenient to have a byte-view of the state... *)
-from JazzEC require import WArray200.
+from JazzEC require export WArray200.
 
-abbrev stbytes (st: state) : WArray200.t =
- WArray200.init64 ("_.[_]" st).
-abbrev stwords (st200: WArray200.t) : state =
- Array25.init (WArray200.get64 st200).
+(*
+op fromWA200 (st: WArray200.t): W8.t Array200.t =
+ init_200_8 (fun i => st.[i]).
+op toWA200 (st: W8.t Array200.t): WArray200.t =
+ init (fun i => st.[i]).
 
+lemma fromWA200K st: toWA200 (fromWA200 st) = st.
+proof.
+rewrite tP => i Hi.
+by rewrite initiE 1:// /= initiE 1://.
+qed.
 
+lemma toWA200K st: fromWA200 (toWA200 st) = st.
+proof.
+rewrite tP => i Hi.
+by rewrite initiE 1:// /= initiE 1://.
+qed.
+*)
 
 
 (*
@@ -63,7 +71,39 @@ op stwords' (st: W8.t Array200.t): state =
  init_25_64 (fun i => u64_pack8 st.[8*i+0] st.[8*i+1] st.[8*i+2] st.[8*i+3] st.[8*i+4] st.[8*i+5] st.[8*i+6] st.[8*i+7]).
 *)
 
+abbrev u8zeros size = nseq size W8.zero.
+
+lemma nth_u8zeros n i: nth W8.zero (u8zeros n) i = W8.zero.
+proof. by rewrite nth_nseq_if /#. qed.
+
+op u64bytes w = W8u8.to_list w.
+
+lemma u64bytes0: u64bytes W64.zero = u8zeros 8.
+proof.
+by rewrite /= /u64bytes /= !W8u8.get_zero -mkseq_nseq /mkseq -iotaredE /=.
+qed.
+
+op u128bytes w = W16u8.to_list w.
+
+lemma u128bytes0: u128bytes W128.zero = u8zeros 16.
+proof.
+by rewrite /= /u128bytes /= !W16u8.get_zero -mkseq_nseq /mkseq -iotaredE /=.
+qed.
+
+op u256bytes w = W32u8.to_list w.
+
+lemma u256bytes0: u256bytes W256.zero = u8zeros 32.
+proof.
+by rewrite /u256bytes /= !W32u8.get_zero -mkseq_nseq /mkseq -iotaredE /=.
+qed.
+
+
 (* TODO: remove redundancy between stbytes and state2bytes *)
+abbrev stbytes (st: state) : WArray200.t =
+ WArray200.init64 ("_.[_]" st).
+abbrev stwords (st200: WArray200.t) : state =
+ Array25.init (WArray200.get64 st200).
+
 lemma stbytesK st:
  stwords (stbytes st) = st.
 proof.
@@ -74,6 +114,12 @@ rewrite pack8bE //= bits8E initiE 1:/# /= initiE 1:/# /= bits8E.
 by apply W8.init_ext => x Hx /#.
 qed.
 
+lemma stbytes_inj s1 s2:
+ stbytes s1 = stbytes s2 => s1 = s2.
+proof.
+by move=> E; rewrite -(stbytesK s1) E stbytesK.
+qed.
+
 lemma stwordsK st:
  stbytes (stwords st) = st.
 proof.
@@ -82,10 +128,10 @@ rewrite initiE //= initiE 1:/# /= get64E pack8bE 1:/#.
 by rewrite initiE 1:/# /= /#.
 qed.
 
-lemma stbytes_inj s1 s2:
- stbytes s1 = stbytes s2 => s1 = s2.
+lemma stwords_inj s1 s2:
+ stwords s1 = stwords s2 => s1 = s2.
 proof.
-by move=> E; rewrite -(stbytesK s1) E stbytesK.
+by move=> E; rewrite -(stwordsK s1) E stwordsK.
 qed.
 
 op bytes2state (bs: bytes): state =
@@ -132,7 +178,7 @@ qed.
 lemma bytes2state0: bytes2state [] = st0.
 proof.
 rewrite /bytes2state /st0 tP => i Hi.
-rewrite get_of_list 1:// createiE //.
+rewrite get_of_list 1:// initiE //.
 by rewrite w64L_from_bytes_nil.
 qed.
 
@@ -168,12 +214,24 @@ rewrite pack8bE 1:/# get_of_list 1:/#.
 by rewrite nth_take // 1:/# nth_drop 1..2:/# /#.
 qed.
 
+
+lemma bytes2state_zext size l:
+ bytes2state (l++u8zeros size) = bytes2state l.
+proof.
+rewrite -!bytes2stbytesP; apply stbytes_inj; rewrite !stwordsK tP => i Hi.
+rewrite !get_of_list 1..2:// nth_cat.
+case: (i < List.size l) => C //.
+by rewrite nth_nseq_if nth_out /#.
+qed.
+
+
+
 lemma addstate_st0 st:
  addstate st0 st = st.
 proof.
 rewrite tP => i Hi.
 rewrite /addstate /st0 /map2.
-by rewrite initiE //= createiE //=.
+by rewrite initiE //= initiE //=.
 qed.
 
 op addstbytes = WArray200.map2 W8.(`^`).
@@ -183,7 +241,7 @@ lemma stbytes_addstate st1 st2:
  = addstbytes (stbytes st1) (stbytes st2).
 proof.
 rewrite tP => i Hi.
-by rewrite map2iE // initiE //= map2iE 1:/# !initiE /#.
+by rewrite map2iE // initiE //= !initiE /#.
 qed.
 
 

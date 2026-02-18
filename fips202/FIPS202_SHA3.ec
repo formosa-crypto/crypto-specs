@@ -12,14 +12,14 @@ require BitEncoding.
 import BitEncoding.BitChunking.
 
 
-require export FIPS202_Keccakf1600.
+require export FIPS202_Keccakf1600 Keccak1600_arrays.
 
 
 (** Initial state *)
-op st0 : state = Array25.create W64.zero.
+op st0 : state = init_25_64 (fun i => W64.zero).
 
 (** State addition (xor) *)
-op addstate = Array25.map2 W64.(`^`) .
+op addstate (s1 s2: state) = init_25_64 (fun i =>  s1.[i] `^` s2.[i]).
 
 (** Section 4 - SPONGE CONSTRUCTION 
 
