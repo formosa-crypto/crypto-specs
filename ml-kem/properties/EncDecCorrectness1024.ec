@@ -135,7 +135,7 @@ have Hsize' : size l = size (map bs2int (chunk n (BytesToBits (BitsToBytes (flat
     rewrite size_map /#. 
   rewrite size_chunk 1:/#.
   rewrite (EclibExtra.size_flatten' n);1:by smt(mapP size_int2bs).
-  by rewrite size_map /#.
+  by rewrite size_map mulrC mulzK /#.
 apply (eq_from_nth witness);1: by exact Hsize'.
 move => i ib.
 rewrite  (nth_map []); 1:smt(size_map).
@@ -146,7 +146,9 @@ rewrite JWordList.nth_chunk 1,2:/#.
 + rewrite (EclibExtra.size_flatten' n);1:by smt(mapP size_int2bs).
   rewrite size_map (: n*i + n = n * (i+1)) 1:/#. 
   by apply StdOrder.IntOrder.ler_pmul2l; smt(). 
-have -> : (take n (drop (n * i) (flatten (map (int2bs n) l)))) = (nth [] (map (int2bs n) l) i); last by rewrite (nth_map witness _ _ _ _ ib) int2bsK 1:/#;smt(all_nthP).
+have -> : (take n (drop (n * i) (flatten (map (int2bs n) l)))) = (nth [] (map (int2bs n) l) i); last first.
+- rewrite (nth_map witness) // int2bsK 1:/# //.
+  by move/List.allP: Hrng; apply; rewrite mem_nth.
 apply (eq_from_nth witness).
 + rewrite size_take_le 1:/# ifT.
   + rewrite size_drop 1:/# (EclibExtra.size_flatten' n);1:smt(mapP size_int2bs). 
