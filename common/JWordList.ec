@@ -50,8 +50,6 @@ move=> _; move: (bs2int_le2Xs bs).
 by move: (ler_weexpn2l 2 _ (size bs) k _); smt(size_ge0).
 qed.
 
-
-
 lemma chunk0 ['a] n (l: 'a list):
  size l < n =>
  chunk n l = [].
@@ -163,6 +161,37 @@ move=> H; rewrite /chunkremains divz_small.
 by rewrite drop0.
 qed.
 
+lemma chunkremains_nil ['a] r (l: 'a list):
+ 0 < r =>
+ r %| size l =>
+ chunkremains r l = [].
+proof.
+by move=> Hr0 Hr; rewrite -size_eq0 size_chunkremains /#.
+qed.
+
+lemma chunkremains_cat ['a] (l1 l2 : 'a list) (r : int):
+ 0 < r =>
+ chunkremains r (l1++l2) = chunkremains r (chunkremains r l1 ++ l2).
+proof.
+move=> Hr.
+rewrite /chunkremains size_cat eq_sym.
+rewrite drop_cat size_cat size_drop. smt(size_ge0).
+have ->: max 0 (size l1 - size l1 %/ r * r) = size l1 %% r by smt().
+rewrite drop_drop. smt(size_ge0). smt(size_ge0).
+case: ((size l1 %% r + size l2) %/ r * r < size l1 %% r) => C.
+ have E: (size l1 %% r + size l2) %/ r * r = 0 by smt(size_ge0).
+ rewrite E /= drop_cat' ifT.
+  by rewrite {1}(divz_eq (size l1) r) -addzA divzMDl 1:/# mulzDl E /= /#.
+ rewrite {2}(divz_eq (size l1) r) -addzA divzMDl 1:/# mulzDl E /= /#.
+rewrite drop_cat ifF.
+move: C; apply contra.
+  rewrite {1 2}(divz_eq (size l1) r) -addzA divzMDl 1:/#. smt().
+
+congr.
+rewrite eq_sym.
+rewrite {1}(divz_eq (size l1) r) -addzA divzMDl 1:/# mulzDl.
+rewrite {3}(divz_eq (size l1) r). ring.
+qed.
 
 (** An "extended" version of [chunkK] *)
 lemma chunkK' ['a] r (bs: 'a list):
@@ -202,6 +231,28 @@ rewrite -{1}(cat_take_drop (size l1 %/ r * r) l1) -catA chunk_cat.
  rewrite ifT 1:/#.
  by rewrite dvdz_mull /#.
 by rewrite -chunk_take_eq //.
+qed.
+
+lemma chunk_take_eq' ['a] (n n': int) (l : 'a list):
+  0 < n => 
+  size l %/ n * n <= n' =>
+  chunk n l = chunk n (take n' l).
+proof.
+move => Hn Hn'; rewrite /chunk.
+have ->: size (take n' l) %/ n = size l %/ n.
+ rewrite size_take; first smt(size_ge0).
+ case: (n' < size l) => C //.
+ rewrite eqz_leq; split; last smt().
+ by apply leq_div2r; smt().
+apply eq_in_mkseq => i Hi /=.
+rewrite drop_take 1:/# take_take ifT //.
+have ?: i*n < size l by smt().
+have H1: n+i*n <= n'.
+ move: Hn'; rewrite -lez_divRL 1:/# => Hn'.
+ have H2: 1+i <= n' %/ n by smt(). 
+ apply (lez_trans (n' %/ n * n)); last smt().
+ by rewrite (:n+i*n=(1+i)*n) 1:/# ler_pmul2r /#.
+smt().
 qed.
 
 (** [chunkpad] used to zero-fill the last chunk *)

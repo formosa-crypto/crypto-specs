@@ -42,6 +42,16 @@ move=> ?; have ->/=: !(n<=0) by smt().
 by rewrite -IH /#.
 qed.
 
+(* a variant of [drop_cat] that is more convenient in some cases *)
+lemma drop_cat' ['a] (n : int) (s1 s2 : 'a list):
+ drop n (s1 ++ s2)
+ = if n <= size s1 then drop n s1 ++ s2 else drop (n - size s1) s2.
+proof.
+case: (n=size s1) => [->//=|C].
+ by rewrite drop_cat /= drop0 drop_size.
+by rewrite drop_cat /#.
+qed.
+
 lemma foldl_dropS ['a 'b] d i f (z:'b) (l: 'a list):
  0 <= i < size l =>
  foldl f z (drop i l)

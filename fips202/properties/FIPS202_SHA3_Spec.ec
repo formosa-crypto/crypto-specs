@@ -38,7 +38,7 @@ lemma bits2state_cat l1 l2:
             (bits2state (nseq (size l1) false ++ l2)).
 proof.
 apply Array25.ext_eq => i Hi.
-rewrite map2iE // !get_of_list //.
+rewrite eq_sym initiE //= !get_of_list //.
 rewrite !nth_w64L_from_bits 1..3:/#.
 apply W64.wordP => k Hk.
 rewrite xorE map2iE // !get_bits2w //.
@@ -52,8 +52,15 @@ qed.
 lemma addstateA (s1 s2 s3: state):
  addstate s1 (addstate s2 s3) = addstate (addstate s1 s2) s3.
 proof.
-rewrite /addstate; apply ext_eq => i Hi.
-by rewrite !map2iE // W64.WRing.AddMonoid.addmA. 
+rewrite /addstate /init_25_64 /= tP => i Hi.
+by rewrite !initiE //= !initiE //= W64.WRing.AddMonoid.addmA. 
+qed.
+
+lemma addstateC (s1 s2: state):
+ addstate s1 s2 = addstate s2 s1.
+proof.
+rewrite /addstate /init_25_64 /= tP => i Hi.
+by rewrite !initiE //= W64.WRing.AddMonoid.addmC. 
 qed.
 
 
