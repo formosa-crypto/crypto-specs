@@ -8,6 +8,7 @@ provers = Z3@4.8
 spec = common/specs/avx2.spec
 
 idirs = JazzEC:arrays
+idirs = Jasmin:jasmin/eclib
 rdirs = common
 rdirs = fips202
 rdirs = ml-kem

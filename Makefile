@@ -3,7 +3,7 @@
 # --------------------------------------------------------------------
 ECCONF := config/tests.config 
 JOBS   ?= 4
-CHECKS ?= specs
+CHECKS ?= all
 
 # --------------------------------------------------------------------
 .PHONY: default check clean_eco
