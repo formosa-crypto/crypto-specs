@@ -15,9 +15,9 @@ env:
 jobs:
   ec:
     name: Check EasyCrypt Files
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     container:
-      image: ghcr.io/easycrypt/ec-build-box
+      image: ghcr.io/easycrypt/ec-build-box:main
     strategy:
       fail-fast: false
     steps:
@@ -29,7 +29,7 @@ jobs:
         path: jasmin
     - name: Compile & Install EasyCrypt
       run: |
-        opam pin --dev-repo add -n easycrypt https://github.com/EasyCrypt/easycrypt.git
+        opam pin add -n easycrypt https://github.com/EasyCrypt/easycrypt.git
         opam install -v easycrypt
     - name: Detect SMT provers
       run: |
