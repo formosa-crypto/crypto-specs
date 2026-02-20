@@ -36,3 +36,8 @@ jobs:
         opam exec -- easycrypt why3config
     - name: Compile Project
       run: opam exec -- make check
+    - name: Upload report
+      uses: actions/upload-artifact@v6
+      with:
+        name: Compilation report
+        path: report.yaml

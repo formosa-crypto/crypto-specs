@@ -11,7 +11,7 @@ CHECKS ?= all
 default: check
 
 check:
-	easycrypt runtest -jobs $(JOBS) $(ECCONF) $(CHECKS)
+	easycrypt runtest -report report.yaml -jobs $(JOBS) $(ECCONF) $(CHECKS)
 
 clean_eco:
 	find . -name '*.eco' -exec rm '{}' ';'
