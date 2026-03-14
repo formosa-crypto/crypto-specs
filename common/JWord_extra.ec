@@ -1,12 +1,41 @@
 require import AllCore List IntDiv.
 require import BitEncoding.
 require import StdOrder.
+require import ListExtra (* in_map_cancel *).
 
 import Ring.IntID.
 import IntOrder.
 import BS2Int.
 
-from Jasmin require import JModel.
+from Jasmin require import JModel_x86.
+
+(* NEW DILITHIUM STUFF *)
+
+lemma w2bitsE (w : W32.t) : w2bits w = BS2Int.int2bs 32 (W32.to_uint w).
+proof. rewrite to_uintE;smt(W32.size_w2bits BS2Int.bs2intK). qed.
+
+lemma map_W8_w2bits_cancel (s : bool list list) :
+     (forall bs, bs \in s => size bs = 8)
+  => map W8.w2bits (map W8.bits2w s) = s.
+proof.
+by move=> h; rewrite in_map_cancel // => bs /h; apply: W8.bits2wK.
+qed.
+
+lemma to_sint_uint_rng_pos_32 (xx : W32.t) (b : int) :
+    0 <= b < 2147483648 =>
+    (0 <= to_sint xx < b  <=> 0 <= to_uint xx < b).
+ have /= Hxx := W32.to_uint_cmp xx. 
+ rewrite /to_sint /smod /= /#.
+qed.
+
+lemma to_sint_uint_rng_neg_32(xx : W32.t) (b : int) :
+  0 < b <= 2147483648 =>
+    -b <= to_sint xx < 0  <=> 4294967296 - b <= to_uint xx <= 4294967296.
+ have /= Hxx := W32.to_uint_cmp xx. 
+ rewrite /to_sint /smod /= /#.
+qed.
+
+
 
 (* misc *)
 
@@ -16,7 +45,7 @@ proof.
 elim: s n => //=.
  smt().
 move=> x xs IH n /=.
-by case: (n <= 0) => C; smt(size_ge0).
+case: (n <= 0) => C;smt(size_ge0).
 qed.
 
 lemma size_take' ['a] (s: 'a list) n:
@@ -77,7 +106,7 @@ lemma W16_msb_sar (w: W16.t) k:
  msb (sar w k) = msb w.
 proof.
 move=> Hk.
-by rewrite !W16_msbE /(`|>>>`) /sar /= /#.
+by rewrite !W16_msbE /(`|>>`) /sar /(`|>>>`) /= /#.
 qed.
 
 lemma W16_msb_sign (w: W16.t):
@@ -110,7 +139,7 @@ lemma W16_sar_pos (w: W16.t) k:
 proof.
 rewrite W16_msbE /= => Hk Hpos.
 apply W16.ext_eq => i Hi.
-rewrite /(`|>>>`) initiE //=.
+rewrite /sar /(`|>>>`)  initiE //=.
 rewrite /(`>>>`) Hi /=.
 case: (W16.size-1 < (i + k)) => E.
  by rewrite lez_minl 1:/# eq_sym get_out /#.
@@ -135,7 +164,7 @@ lemma W16_sarE_neg (w: W16.t) k:
 proof.
 rewrite W16_msbE /= => Hk Hmsb.
 apply W16.ext_eq => i Hi.
-rewrite /(`|>>>`) initiE //=.
+rewrite /sar /(`|>>>`)  initiE //=.
 rewrite /(`>>>`) !Hi //=.
 have ->/=: 0 <= i + k by smt().
 case: (i + k < W16.size) => C.
@@ -222,6 +251,7 @@ by rewrite W16_sar_pos // to_uint_shr /#.
 qed.
 
 
+
 (* W32 *)
 
 lemma W32_get_ule (w: W32.t) k:
@@ -259,7 +289,7 @@ lemma W32_msb_sar (w: W32.t) k:
  msb (sar w k) = msb w.
 proof.
 move=> Hk.
-by rewrite !W32_msbE /(`|>>>`) /sar /= /#.
+by rewrite !W32_msbE /(`|>>`) /sar /(`|>>>`) /= /#.
 qed.
 
 lemma W32_msb_sign (w: W32.t):
@@ -292,7 +322,7 @@ lemma W32_sar_pos (w: W32.t) k:
 proof.
 rewrite W32_msbE /= => Hk Hpos.
 apply W32.ext_eq => i Hi.
-rewrite /(`|>>>`) initiE //=.
+rewrite /sar /(`|>>>`)  initiE //=.
 rewrite /(`>>>`) Hi /=.
 case: (W32.size-1 < (i + k)) => E.
  by rewrite lez_minl 1:/# eq_sym get_out /#.
@@ -317,7 +347,7 @@ lemma W32_sarE_neg (w: W32.t) k:
 proof.
 rewrite W32_msbE /= => Hk Hmsb.
 apply W32.ext_eq => i Hi.
-rewrite /(`|>>>`) initiE //=.
+rewrite /sar /(`|>>>`)  initiE //=.
 rewrite /(`>>>`) !Hi //=.
 have ->/=: 0 <= i + k by smt().
 case: (i + k < W32.size) => C.
